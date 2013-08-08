@@ -333,6 +333,11 @@ int main(int argc, char **argv) {
 	printf("(%f cycles per base pair (%e seconds))\n", ((double)(b-a)) \
 		/ len, ((double)(b-a)) / (len * 2500000000.));
 	pats = malloc(sizeof(char *) * 10000000);
+	// Comment: This is huge in 64-bit mode and thus makes valgrind
+	// runs somewhat untenable (at least with that number of bps to
+	// search; we can, of course, always scale things down but this
+	// reveals more of the performance overhead from threading and less
+	// asymptotic performance (which is what we actually care about)
 	for (i = 0; i < 10000000; ++i) {
 		pats[i] = malloc(12);
 		for (j = 0; j < 12; ++j)
