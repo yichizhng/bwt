@@ -53,9 +53,11 @@ fm_index *make_fmi(const char *str, int len) {
 	int *idxs, i;
 	fm_index *fmi;
 	// histsort() builds the suffix array for the string
-	idxs = histsort(str, len);
+	if (len < 500000000)
+	  idxs = histsort(str, len);
 	// Replacing histogram sort with saca-k
-	//idxs = csuff_arr(str, len);
+	else
+	  idxs = csuff_arr(str, len);
 	fmi = malloc(sizeof(fm_index));
 	//fmi->idxs = idxs;
 	fmi->idxs = malloc((len+1) / 32 * sizeof(int));

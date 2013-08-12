@@ -7,14 +7,15 @@
 // because %rax is the extension of %eax now, and the upper 32 bits still end
 // up in %edx...
 
-/*
-#define rdtscll(val) \
-	__asm__ __volatile__ ("rdtsc" : "=A" (val) : : "eax", "edx");
-*/
 
+#define rdtscll(val) \
+	__asm__ __volatile__ ("rdtsc" : "=A" (val));
+
+/*
 
 #define rdtscll(val) \
   __asm__ __volatile__ ("rdtsc\n\tshl $32, %%rdx\n\tor %%rdx, %%rax" : \
 			"=A" (val) : : "rdx");
 
+*/
 #endif /* _RDTSCLL_H */
