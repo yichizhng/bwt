@@ -48,16 +48,14 @@ void destroy_fmi (fm_index *fmi) {
 }
 
 fm_index *make_fmi(const char *str, int len) {
-	// Take the bwt of str. Note that str should be given in compressed
-	// form.
-	int *idxs, i;
-	fm_index *fmi;
-	// histsort() builds the suffix array for the string
-	if (len < 500000000)
-	  idxs = histsort(str, len);
-	// Replacing histogram sort with saca-k
-	else
-	  idxs = csuff_arr(str, len);
+  // Take the bwt of str. Note that str should be given in compressed
+  // form.
+  int *idxs, i;
+  fm_index *fmi;
+  // histsort() builds the suffix array for the string
+  idxs = histsort(str, len);
+  // Replacing histogram sort with saca-k
+  // idxs = csuff_arr(str, len);
 	fmi = malloc(sizeof(fm_index));
 	//fmi->idxs = idxs;
 	fmi->idxs = malloc((len+1) / 32 * sizeof(int));
@@ -248,7 +246,7 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
 struct thread_args {
 	fm_index *fmi;
 	int num;
-	char **pats;
+	char *pats;
 	int start;
 };
 
@@ -260,12 +258,12 @@ void *worker(void *arg) {
 	//	max/4);
 	for (i = ((int) ((struct thread_args*)arg)->start); i < max; i ++) {
 		reverse_search(((struct thread_args*)arg)->fmi, 
-			((struct thread_args*)arg)->pats[i], 12);
+			       ((struct thread_args*)arg)->pats + i, 12);
 	}
 	return NULL;
 }
 
-void startWorkers(fm_index *fmi, int num, char ** pats) {
+void startWorkers(fm_index *fmi, int num, char *pats) {
 	// Starts 4 threads, each of which will process num/4 patterns
 	// There are no synchronization primitives because they're unnecessary.
 	pthread_t threads[4];
@@ -291,13 +289,9 @@ void startWorkers(fm_index *fmi, int num, char ** pats) {
 	return;
 }
 
-// Misfeature: Index construction is O(n log n); this is bad (well, not really,
-// since we only have to do it once). There are O(n) algorithms (e.g. DC3) but
-// most of them require ridiculous amounts of auxiliary memory and don't
-// generate the suffix array (which I need) and have poor cache locality
-// Although I may switch to SACA-K at some point, it's also quite fast (even
-// though it's single-threaded, it catches up with my 4-thread histogram sort
-// around
+// Misfeature: Index construction is O(n log n) on average; this is fast enough
+// to dominate SACA-K below a billion base pairs or so, but uses too much
+// memory
 
 // For our use case (RNA sequencing) we can reverse search without backtracking
 // on some fixed size seed (e.g. 14); STAR uses maximum mappable seed,
@@ -320,13 +314,26 @@ int main(int argc, char **argv) {
 	// fine (and they make servers with enough memory to run it anyway)
 	// Performance testing code
 	int len, i, j, k;
-	char *str, **pats;
+	char *str, *pats;
 	fm_index *fmi;
 	unsigned long long a, b;
 	len = atoi(argv[1]);
-	str = malloc(len/4);
-	for (i = 0; i < len/4; ++i)
+	str = malloc(len/4 + 1);
+	for (i = 0; i < len/4 + 1; ++i)
 		str[i] = rand();
+	switch (len % 4) {
+	case 1:
+	  str[len/4] &= 0xC0;
+	  break;
+	case 2:
+	  str[len/4] &= 0xF0;
+	  break;
+	case 3:
+	  str[len/4] &= 0xFC;
+	  break;
+	case 0:
+	  str[len/4] = 0;
+	}
 	rdtscll(a);
 	fmi = make_fmi(str, len);
 	rdtscll(b);
@@ -334,17 +341,15 @@ int main(int argc, char **argv) {
 		len, b-a, ((double)(b-a)) / 2500000000.);
 	printf("(%f cycles per base pair (%e seconds))\n", ((double)(b-a)) \
 		/ len, ((double)(b-a)) / (len * 2500000000.));
-	pats = malloc(sizeof(char *) * 10000000);
+	pats = malloc(sizeof(char) * 10000011);
+	for (i = 0; i < 10000011; ++i) {
+	  pats[i] = rand() & 3;
+	}
 	// Comment: This is huge in 64-bit mode and thus makes valgrind
 	// runs somewhat untenable (at least with that number of bps to
 	// search; we can, of course, always scale things down but this
 	// reveals more of the performance overhead from threading and less
 	// asymptotic performance (which is what we actually care about)
-	for (i = 0; i < 10000000; ++i) {
-		pats[i] = malloc(12);
-		for (j = 0; j < 12; ++j)
-			pats[i][j] = rand()&3;
-	}
 	rdtscll(a);
 	startWorkers(fmi, 10000000, pats);
 	rdtscll(b);
@@ -358,9 +363,6 @@ int main(int argc, char **argv) {
 	// 1.5 million bytes to store (50% auxiliary data)
 	// which is kind of bad but yeah
 	free(str);
-	for (i = 0; i < 10000000; ++i) {
-		free(pats[i]);
-	}
 	free(pats);
 	/* Correctness verification code
 	int x;

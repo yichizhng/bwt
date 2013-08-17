@@ -515,9 +515,10 @@ void SACA_K(unsigned char *s, unsigned int *SA,
 
 
 // TODO: Replace char with unsigned char everywhere probably
-// This function is a drop-in replacement for histsort(), which, while
+// This function is a drop-in replacement for histsort() (except
+// that it expects a 0 bp after the sequence :]), which, while
 // slower for len<10^9, also uses a lot less memory
-unsigned int *csuff_arr(char *seq, unsigned int len) {
+unsigned int *csuff_arr(const char *seq, unsigned int len) {
 	// seq is assumed to be given in compressed form form and be
 	// null-terminated (having an internal zero byte is fine)
 	// Testing, ahoy!
