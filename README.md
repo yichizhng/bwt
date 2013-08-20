@@ -1,11 +1,13 @@
 TODO:
 Replace all instances of getbase() with a header defining it (still as a
 static inline function)
-Change FM-Index-building code to switch between single-threaded histsort,
-4-threaded histsort, and SACA-K at a certain length
-Fix the locate() function, it probably doesn't work right now
-Write RNA-seq (after getting enough ideas for it)
-Ideas: stitching, semi-backtracking search (for when we run out of seeds
+Fix the locate() function, it probably doesn't work right now (in particular
+the problem is with retrieving the full SA from the FM-index; this is
+theoretically doable in constant time (for any given element) but I've messed
+something up)
+Write some basic test for RNA-seq (should really fix fmitest.h first, I suspect
+that I'll need to include it in some things)
+Ideas: stitching, semi-backtracking search? (for when we run out of seeds
 of sufficient length)
 
 Things to consider:

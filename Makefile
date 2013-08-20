@@ -1,11 +1,13 @@
 CC = gcc
-CFLAGS = -pthread -O3 -std=gnu99 -m64 -fomit-frame-pointer -g
-OBJS = histsort.o bwt.o histsortcomp.o fmitest.o seqindex.o
+CFLAGS = -pthread -O2 -std=gnu99 -m64 -fomit-frame-pointer
 
-all: bwt histtest histcomptest fmitest
+all: bwt histtest histcomptest fmitest searchtest
 
 %.o: %.c
 	$(CC) -c -o $@ $< $(CFLAGS)
+
+searchtest: searchtest.o histsortcomp.o seqindex.o csacak.o
+	gcc -o $@ $^ $(CFLAGS)
 
 fmitest: histsortcomp.o fmitest.o seqindex.o csacak.o
 	gcc -o $@ $^ $(CFLAGS)
