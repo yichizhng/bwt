@@ -37,13 +37,17 @@ fm_index *make_fmi(const char *str, int len) {
   int *idxs, i;
   fm_index *fmi;
   idxs = histsort(str, len); // i.e. SA
+  // TODO: Write a mechanism (command line argument perhaps) to switch
+  // between the algorithms
+  // csuff_arr() uses less memory but is slower for all but the most
+  // extreme cases
+  // histsort(), on the other hand, is cache-friendly and multithreaded
   // idxs = csuff_arr(str, len);
   fmi = malloc(sizeof(fm_index));
   fmi->idxs = malloc((len+1) / 32 * sizeof(int));
   // idxs is probably more properly referred to as "CSA"
   for (i = 0; i < (len+1)/32; ++i)
     fmi->idxs[i] = idxs[32 * i];
-  // TODO: Is this right?
   fmi->bwt = malloc((len+3)/4);
   fmi->len = len;
   fmi->endloc = sprintcbwt(str, idxs, len, fmi->bwt);
@@ -61,12 +65,10 @@ fm_index *make_fmi(const char *str, int len) {
 int rank(const fm_index *, char, int);
 
 static inline int lf(const fm_index *fmi, int idx) {
-	if (idx == fmi->endloc)
-		return 0;
-	//if (idx > fmi->endloc)
-	//	idx--;
-	return fmi->C[getbase(fmi->bwt,idx - (idx > fmi->endloc))] +
-		 rank(fmi, getbase(fmi->bwt,idx - (idx > fmi->endloc)), idx);
+  if (idx == fmi->endloc)
+    return 0;
+  return fmi->C[getbase(fmi->bwt,idx - (idx > fmi->endloc))] +
+    rank(fmi, getbase(fmi->bwt,idx - (idx > fmi->endloc)), idx);
 }
 
 int rank(const fm_index *fmi, char c, int idx) {
@@ -77,14 +79,14 @@ int rank(const fm_index *fmi, char c, int idx) {
 
 int reverse_search(const fm_index *fmi, const char *pattern, int len) {
   int start, end, i;
-  start = fmi->C[pattern[len-1]]+1;
+  start = fmi->C[pattern[len-1]];
   end = fmi->C[pattern[len-1]+1];
   for (i = len-2; i >= 0; --i) {
     if (end <= start) {
       return 0;
     }
     start = fmi->C[pattern[i]] + 
-      rank(fmi, pattern[i], start-1)+1;
+      rank(fmi, pattern[i], start);
     end = fmi->C[pattern[i]] +
       rank(fmi, pattern[i], end);
   }
@@ -92,8 +94,7 @@ int reverse_search(const fm_index *fmi, const char *pattern, int len) {
 }
 
 int unc_sa(const fm_index *fmi, int idx) {
-  // Calculates SA[idx] given an enhancedish fm-index (a partial suffix array
-  // and a BWT and some other stuff)
+  // Calculates SA[idx] given an fm-index ("enhancedish partial suffix array"?)
   int i;
   for (i = 0; idx & 31; ++i) {
     // Use the LF-mapping to find the rotation previous to idx
@@ -103,19 +104,20 @@ int unc_sa(const fm_index *fmi, int idx) {
 }
 
 int locate(const fm_index *fmi, const char *pattern, int len) {
-  // Find the (first) instance of a given sequence in a given fm-index
+  // Find the (first[0]) instance of a given sequence in a given fm-index
   // Returns -1 if none are found
+  // [0] "first" in terms of location in the suffix array; i.e. the match
+  // whose corresponding rotation (or equivalently, suffix) comes first
+  // lexicographically; this is largely irrelevant in any real usage
   int start, end, i;
-  start = fmi->C[pattern[len-1]]+1;
+  start = fmi->C[pattern[len-1]];
   end = fmi->C[pattern[len-1]+1];
   for (i = len-2; i >= 0; --i) {
     if (end <= start) {
       return -1;
     }
-    start = fmi->C[pattern[i]] + 
-      rank(fmi, pattern[i], start-1);
-    end = fmi->C[pattern[i]] +
-      rank(fmi, pattern[i], end);
+    start = fmi->C[pattern[i]] + rank(fmi, pattern[i], start);
+    end = fmi->C[pattern[i]] + rank(fmi, pattern[i], end);
   }
   if (end - start != 1)
     printf("Warning: multiple matches found (returned first)\n");
@@ -138,14 +140,14 @@ void loc_search(const fm_index *fmi, const char *pattern, int len,
 	// previous, it just stores start and end into pointers (this
 	// being better than, say, returning a struct).
 	int start, end, i;
-	start = fmi->C[pattern[len-1]]+1;
+	start = fmi->C[pattern[len-1]];
 	end = fmi->C[pattern[len-1]+1];
 	for (i = len-2; i >= 0; --i) {
 		if (end <= start) {
 			break;
 		}
 		start = fmi->C[pattern[i]] + 
-			rank(fmi, pattern[i], start-1)+1;
+			rank(fmi, pattern[i], start);
 		end = fmi->C[pattern[i]] +
 			rank(fmi, pattern[i], end);
 	}
@@ -160,6 +162,7 @@ int main(int argc, char **argv) {
   // We take our input filename from argv
   int len, i, j, k, jj;
   char *seq, *buf, c;
+  long long a, b;
   fm_index *fmi;
   FILE *fp;
   if (argc == 1) {
@@ -173,50 +176,25 @@ int main(int argc, char **argv) {
   seq = malloc(len/4+1);
   for (i = 0; i < len/4 + 1; ++i) {
     switch(fgetc(fp)) {
-    case 'C':
-      c = 64;
-      break;
-    case 'G':
-      c = 128;
-      break;
-    case 'T':
-      c = 192;
-      break;
-    default:
-      c = 0;
-      break;
+    case 'C': c = 64; break;
+    case 'G': c = 128; break;
+    case 'T': c = 192; break;
+    default: c = 0;
     }
     switch(fgetc(fp)) {
-    case 'C':
-      c ^= 16;
-      break;
-    case 'G':
-      c ^= 32;
-      break;
-    case 'T':
-      c ^= 48;
+    case 'C': c ^= 16; break;
+    case 'G': c ^= 32; break;
+    case 'T': c ^= 48;
     }
     switch(fgetc(fp)) {
-    case 'C':
-      c ^= 4;
-      break;
-    case 'G':
-      c ^= 8;
-      break;
-    case 'T':
-      c ^= 12;
-      break;
+    case 'C': c ^= 4; break;
+    case 'G': c ^= 8; break;
+    case 'T': c ^= 12;
     }
     switch(fgetc(fp)) {
-    case 'C':
-      c ^= 1;
-      break;
-    case 'G':
-      c ^= 2;
-      break;
-    case 'T':
-      c ^= 3;
-      break;
+    case 'C': c ^= 1; break;
+    case 'G': c ^= 2; break;
+    case 'T': c ^= 3;
     }
     seq[i] = c;
   }
@@ -235,14 +213,16 @@ int main(int argc, char **argv) {
     }
     seq[len/4] = c;
   }
+  fclose(fp);
   // Now that we've loaded the sequence (ish) we can build an fm-index on it
   fmi = make_fmi(seq, len);
-  // Do some fun tests (load up a length 20 sequence (starting from anywhere
+  // Do some fun tests (load up a length 30 sequence (starting from anywhere
   // on the "genome") and backwards search for it on the fm-index (and we're
   // going to fix locate() now too)
   buf = malloc(30); // The C/C++ standard guarantees that sizeof(char) == 1
   srand(time(0));
-  for (i = 0; i < 1000; ++i) {
+  rdtscll(a);
+  for (i = 0; i < 1000000; ++i) {
     // Pick some randomish location to start from (i.e. anywhere from 0
     // to len-21)
     j = rand() % (len-30);
@@ -250,7 +230,17 @@ int main(int argc, char **argv) {
       buf[k] = getbase(seq, j+k);
     }
     jj = locate(fmi, buf, 30);
-    printf("%d %d\n", j, jj);
+    //    if (j != jj && j != -1)
+      //      printf("Ruh roh ");
+    //    printf("%d %d\n", j, jj);
   }
+  rdtscll(b);
+  printf("Took %lld cycles to search 1000000 30bp sequences\n",
+	 b-a);
+  printf("(%f seconds), over a genome of length %d\n", 
+	 ((double)(b-a)) / 2500000000, len);
+  destroy_fmi(fmi);
+  free(seq);
+  free(buf);
   return 0;
 }

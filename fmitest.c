@@ -133,7 +133,7 @@ int reverse_search(const fm_index *fmi, const char *pattern, int len) {
 	//for (i = 0; i < len; ++i)
 	//	putchar('0' + pattern[i]);
 	//printf(":\n");
-	start = fmi->C[pattern[len-1]]+1;
+	start = fmi->C[pattern[len-1]];
 	end = fmi->C[pattern[len-1]+1];
 
 	// Iterate backwards through the string (because the fmi implements
@@ -145,7 +145,7 @@ int reverse_search(const fm_index *fmi, const char *pattern, int len) {
 			return 0;
 		}
 		start = fmi->C[pattern[i]] + 
-			rank(fmi, pattern[i], start-1)+1;
+			rank(fmi, pattern[i], start);
 		end = fmi->C[pattern[i]] +
 			rank(fmi, pattern[i], end);
 	}
