@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -pthread -O3 -std=gnu99 -m64 -fomit-frame-pointer -g
+CFLAGS = -pthread -O3 -std=gnu99 -m64 -fomit-frame-pointer
 
 all: bwt histtest histcomptest fmitest searchtest
 
