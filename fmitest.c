@@ -208,35 +208,9 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
 	int i, j, start, end;
 	memcpy(pat, pattern, len);
 	memcpy(pat+len, pattern, len);
-	// We can implement cyclic search simply by putting another copy
-	// of the nucleotide sequence behind and limiting our searches to
-	// depth len (Note that we do forward searches on the lower indexed
-	// copy and backwards searches on the higher indexed copy instead of
-	// silly things like taking mods)
-	
-	// Starting from the end (of the higher copy), search backwards with
-	// some fixed length (say, 14)
 	for (i = len; i; --i) {
 		loc_search(fmi, pattern+i, 14, &start, &end);
 	 	if (start < end) {
-			// We have some matches to check (e.g. via dynamic
-			// programming) There is some cutoff for end-start
-			// where we just ignore it as a repeated motif
-			// (if it turns out not to be we'll catch it when we
-			// extend an adjacent sequence)
-
-			// Extend the sequence in both directions, looking for
-			// the usual splice sequence. This is probably best
-			// implemented via copying out some part of the
-			// sequence (e.g. 100 bps in either direction, or
-			// up to the splice sequence) and
-			// running a dynamic algorithm (e.g. Smith-Waterman)
-			
-			// TODO: Find SSSE3 (or other SIMD) implementation
-			// of Smith-Waterman
-			
-			// Decrement i appropriately, since we've matched part
-			// of the sequence
 		}
 	}
 	// Identify non-mapped segments and deal with them

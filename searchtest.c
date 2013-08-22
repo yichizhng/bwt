@@ -77,6 +77,7 @@ int rank(const fm_index *fmi, char c, int idx) {
 	return seq_rank(fmi->bwt, fmi->rank_index, 16, idx, c, fmi->lookup);
 }
 
+// Runs in O(m) time
 int reverse_search(const fm_index *fmi, const char *pattern, int len) {
   int start, end, i;
   start = fmi->C[pattern[len-1]];
@@ -103,6 +104,7 @@ int unc_sa(const fm_index *fmi, int idx) {
   return fmi->idxs[idx/32] + i;
 }
 
+// Runs in O(log(n) + m) time
 int locate(const fm_index *fmi, const char *pattern, int len) {
   // Find the (first[0]) instance of a given sequence in a given fm-index
   // Returns -1 if none are found
@@ -124,6 +126,7 @@ int locate(const fm_index *fmi, const char *pattern, int len) {
   return unc_sa(fmi, start);
 }
 
+// Runs in O(m) time
 void loc_search(const fm_index *fmi, const char *pattern, int len,
 	int *sp, int *ep) {
 	// Searches for a pattern in fmi and returns the start and
@@ -202,14 +205,9 @@ int main(int argc, char **argv) {
   c = 0;
   for (i = 0; i < len&3; ++i) {
     switch(fgetc(fp)) {
-    case 'C':
-      c ^= 64 >> (2 * i);
-      break;
-    case 'G':
-      c ^= 128 >> (2 * i);
-      break;
-    case 'T':
-      c ^= 192 >> (2 * i);
+    case 'C': c ^= 64 >> (2 * i); break;
+    case 'G': c ^= 128 >> (2 * i); break;
+    case 'T': c ^= 192 >> (2 * i);
     }
     seq[len/4] = c;
   }
@@ -219,23 +217,23 @@ int main(int argc, char **argv) {
   // Do some fun tests (load up a length 30 sequence (starting from anywhere
   // on the "genome") and backwards search for it on the fm-index (and we're
   // going to fix locate() now too)
-  buf = malloc(30); // The C/C++ standard guarantees that sizeof(char) == 1
+  buf = malloc(12); // The C/C++ standard guarantees that sizeof(char) == 1
   srand(time(0));
   rdtscll(a);
   for (i = 0; i < 1000000; ++i) {
     // Pick some randomish location to start from (i.e. anywhere from 0
     // to len-21)
-    j = rand() % (len-30);
-    for (k = 0; k < 30; ++k) {
+    j = rand() % (len-12);
+    for (k = 0; k < 12; ++k) {
       buf[k] = getbase(seq, j+k);
     }
-    jj = locate(fmi, buf, 30);
+    jj = locate(fmi, buf, 12);
     //    if (j != jj && j != -1)
       //      printf("Ruh roh ");
     //    printf("%d %d\n", j, jj);
   }
   rdtscll(b);
-  printf("Took %lld cycles to search 1000000 30bp sequences\n",
+  printf("Took %lld cycles to search 1000000 12bp sequences\n",
 	 b-a);
   printf("(%f seconds), over a genome of length %d\n", 
 	 ((double)(b-a)) / 2500000000, len);
