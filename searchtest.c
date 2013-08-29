@@ -228,14 +228,14 @@ int main(int argc, char **argv) {
       buf[k] = getbase(seq, j+k);
     }
     jj = locate(fmi, buf, 12);
-    //    if (j != jj && j != -1)
-      //      printf("Ruh roh ");
+    //if (j != jj && j != -1)
+    //        printf("Ruh roh ");
     //    printf("%d %d\n", j, jj);
   }
   rdtscll(b);
-  printf("Took %lld cycles to search 1000000 12bp sequences\n",
+  fprintf(stderr, "Took %lld cycles to search 1000000 12bp sequences\n",
 	 b-a);
-  printf("(%f seconds), over a genome of length %d\n", 
+  fprintf(stderr, "(%f seconds), over a genome of length %d\n", 
 	 ((double)(b-a)) / 2500000000, len);
   destroy_fmi(fmi);
   free(seq);

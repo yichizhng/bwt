@@ -61,8 +61,6 @@ int **seq_index(char *bwt, int len, int blocksize,const unsigned char *tbl) {
 		index[j][3] = index[j-1][3];
 		// Count up the base pairs in the last block; this loop
 		// will also be unrolled, just for old time's sake
-	// TODO: WHAT THE HELL DID I JUST WRITE AND WHY IS IT CORRECT
-	// FIX WHEN MORE AWAKE
 		for (i = -blocksize/4; i < ((len%blocksize) - blocksize)/4 - !!(len%4); ++i) {
 			c = bwt[j*(blocksize/4) + i];
 			index[j][0] += tbl[4 * c];
