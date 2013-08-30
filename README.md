@@ -65,9 +65,11 @@ repetitive sequence is the pathological case for histogram sort).
 
 Backward search can be done in O(m) time (i.e. constant in sequence length), but
 the locate() function (i.e. associating a particular match with its position
-on the genome) requires O(m + log n) time (in particular the association
-requires O(log n) time and is essentially the calculation of SA[i]; this is
-the unc_sa() function - unc is short for "uncompress")
+on the genome) requires O(m + log_c n) time (in particular the association
+requires O(log_c n) time and is essentially the calculation of SA[i]; this is
+the unc_sa() function - unc is short for "uncompress"). The base of the log (c)
+depends on how much of the suffix array you store (and yes, it can be a function
+of n; I chose n/32).
 
 One important note is that many operations involving the Burrows-Wheeler
 transform and the original sequence are extremely cache unfriendly; for example,
@@ -89,4 +91,8 @@ the individual's genome. Different alignment tools deal with this in different
 ways; however, it is certainly a computationally expensive problem to deal with.
 Bowtie uses greedy backtracking reverse search (I haven't looked at the source
 code, but I imagine it tries replacing a character in the sequence with one
-that results in more matches at that particular point)
+that results in more matches at that particular point). STAR uses maximum
+mappable prefix (essentially a binary search over the suffix array; however,
+O(m log n) is a painful number; it is apparently possible to do in O(m), but
+I'm not certain the asymptotic improvement is actually helpful in real life
+cases, since log n is bounded)

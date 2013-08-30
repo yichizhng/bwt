@@ -27,11 +27,15 @@ int **seq_index(char *bwt, int len, int blocksize,const unsigned char *tbl) {
 	// base pairs per block.
 	// index, unlike lookup_table, is a 2D array, largely because I feel
 	// like it.
-	// tbl is the return value of lookup_table().
+	// tbl is the return value of lookup_table() (because who wants to call
+        // it more than once?).
 	int i, j, **index;
 	unsigned char c; // Apparently C does something odd when casting
 	// unsigned char to unsigned int... by sign extending
 	// which is certainly not what I want
+
+	// Compiling with full warnings will give you tons of rubbish about
+        // array indexing with a char; I know perfectly well what I'm doing.
 	index = malloc((1+((len+blocksize-1)/blocksize)) * sizeof(int *));
 
 	index[0] = calloc(4, sizeof(int));
@@ -90,9 +94,6 @@ int seq_rank(unsigned char *bwt, int **sidx, int blocksize, int idx, char c, con
 	// First we look up the appropriate block prefix sum
 	x = sidx[idx/blocksize][c];
 	// Now we iterate through the block
-	// TODO: speed up with lookup table (i.e. loop unrolling)
-	// This becomes more relevant if we increase block size
-
 	/* unoptimized version */
 	//for (i = 0; i < idx % blocksize; i ++) {
 	//	if (getbase(bwt,(idx/blocksize)*blocksize + i) == c) {
@@ -111,23 +112,23 @@ int seq_rank(unsigned char *bwt, int **sidx, int blocksize, int idx, char c, con
 }
 
 unsigned char * lookup_table() {
-	// Calculates the lookup table for one byte of the sequence (i.e.
-	// 4 base pairs). 256 possible combinations * 4 entries per byte
-	// = 1024 bytes for our table.
-	unsigned char *tbl = malloc(1024);
-	memset(tbl, 0, 1024);
-	int i, j, k, l;
-	for (i = 0; i < 4; ++i)
-	for (j = 0; j < 4; ++j)
-	for (k = 0; k < 4; ++k)
+  // Calculates the lookup table for one byte of the sequence (i.e.
+  // 4 base pairs). 256 possible combinations * 4 entries per byte
+  // = 1024 bytes for our table.
+  unsigned char *tbl = malloc(1024);
+  memset(tbl, 0, 1024);
+  int i, j, k, l;
+  for (i = 0; i < 4; ++i)
+    for (j = 0; j < 4; ++j)
+      for (k = 0; k < 4; ++k)
 	for (l = 0; l < 4; ++l) {
-		// Brilliantly obfsucated loop
-		// In essence, tbl[4x + i] (for i < 4, x < 256) is
-		// the count of base pair i in the byte represented by x
-		tbl[257*i + 64*j + 16*k + 4*l]++;
-		tbl[256*i + 65*j + 16*k + 4*l]++;
-		tbl[256*i + 64*j + 17*k + 4*l]++;
-		tbl[256*i + 64*j + 16*k + 5*l]++;
+	  // Brilliantly obfsucated loop
+	  // In essence, tbl[4x + i] (for i < 4, x < 256) is
+	  // the count of base pair i in the byte represented by x
+	  tbl[257*i + 64*j + 16*k + 4*l]++;
+	  tbl[256*i + 65*j + 16*k + 4*l]++;
+	  tbl[256*i + 64*j + 17*k + 4*l]++;
+	  tbl[256*i + 64*j + 16*k + 5*l]++;
 	}
-	return tbl;
+  return tbl;
 }
