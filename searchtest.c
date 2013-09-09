@@ -164,7 +164,8 @@ void loc_search(const fm_index *fmi, const char *pattern, int len,
 int main(int argc, char **argv) {
   // We take our input filename from argv
   int len, i, j, k, jj;
-  char *seq, *buf, c;
+  char *seq, *buf;
+  unsigned char c;
   long long a, b;
   fm_index *fmi;
   FILE *fp;

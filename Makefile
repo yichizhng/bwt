@@ -1,5 +1,9 @@
 CC = gcc
 CFLAGS = -pthread -O3 -std=gnu99 -m64 -fomit-frame-pointer
+# Has no compiler warnings, unless you're the kind of silly person who
+# likes turning on extra warnings and reading through them
+# At the very least, valgrind has nothing to complain about
+
 
 all: bwt histtest histcomptest fmitest searchtest
 

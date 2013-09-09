@@ -17,6 +17,6 @@ int makecbwt(const char *, int, char *);
 
 int saca_makecbwt(const char *, int, char *);
 
-int sprintcbwt(const char *, int *, int, char *);
+unsigned int sprintcbwt(const char *, unsigned int *, unsigned int, char *);
 
 #endif // _HISTSORTCOMP_H

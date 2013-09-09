@@ -14,7 +14,7 @@
 const unsigned int EMPTY=((unsigned int)1)<<(sizeof(unsigned int)*8-1); 
 
 static __inline__ unsigned char getbase(unsigned char *str, unsigned int idx) {
-	return ((str[idx>>2])>>(2*(3-(idx&3)))) & 3;
+  return ((str[idx>>2])>>(2*(3-(idx&3)))) & 3;
 }
 
 // Minor adaptations to make this compile in C (which has no bool type)
@@ -30,8 +30,8 @@ typedef char bool;
 #define chr(i) ((level==0)?(getbase((unsigned char *)s,i)):((int *)s)[i])
 
 void getBuckets(unsigned char *s, 
-  unsigned int *bkt, unsigned int n,
-  unsigned int K, bool end) { 
+		unsigned int *bkt, unsigned int n,
+		unsigned int K, bool end) { 
   unsigned int i, sum=0;
   
   // clear all buckets .
@@ -47,10 +47,10 @@ void getBuckets(unsigned char *s,
 }
 
 void putSuffix0(unsigned int *SA, 
-  unsigned char *s, unsigned int *bkt, 
-  unsigned int n, unsigned int K, int n1) {
+		unsigned char *s, unsigned int *bkt, 
+		unsigned int n, unsigned int K, int n1) {
   unsigned int i, j;
-
+  
   // find the end of each bucket.
   getBuckets(s, bkt, n, K, true);
 
@@ -63,8 +63,8 @@ void putSuffix0(unsigned int *SA,
 }
 
 void induceSAl0(unsigned int *SA,
-  unsigned char *s, unsigned int *bkt,
-  unsigned int n, unsigned int K, bool suffix) {
+		unsigned char *s, unsigned int *bkt,
+		unsigned int n, unsigned int K, bool suffix) {
   unsigned int i, j;
 
   // find the head of each bucket.
@@ -83,8 +83,8 @@ void induceSAl0(unsigned int *SA,
 }
 
 void induceSAs0(unsigned int *SA,
-  unsigned char *s, unsigned int *bkt,
-  unsigned int n, unsigned int K, bool suffix) {
+		unsigned char *s, unsigned int *bkt,
+		unsigned int n, unsigned int K, bool suffix) {
   unsigned int i, j;
 
   // find the end of each bucket.
@@ -102,8 +102,8 @@ void induceSAs0(unsigned int *SA,
 }
 
 void putSubstr0(unsigned int *SA,
-  unsigned char *s, unsigned int *bkt,
-  unsigned int n, unsigned int K) {
+		unsigned char *s, unsigned int *bkt,
+		unsigned int n, unsigned int K) {
   unsigned int i, cur_t, succ_t;
 
   // find the end of each bucket.
@@ -139,7 +139,7 @@ void putSuffix1(int *SA, int *s, int n1) {
 }
 
 void induceSAl1(int *SA, int *s, 
-  int n, bool suffix) {
+		int n, bool suffix) {
   int h, i, j, step=1;
   
   for(i=0; i<n; i+=step) {
@@ -214,7 +214,7 @@ void induceSAl1(int *SA, int *s,
 }
 
 void induceSAs1(int *SA, int *s, 
-  int n, bool suffix) {
+		int n, bool suffix) {
   int h, i, j, step=1;
   
   for(i=n-1; i>0; i-=step) {
@@ -358,7 +358,7 @@ void putSubstr1(int *SA, int *s, int n) {
 }
 
 unsigned int getLengthOfLMS(unsigned char *s, 
-  unsigned int n, int level, unsigned int x) {
+			    unsigned int n, int level, unsigned int x) {
   if(x==n-1) return 1;  
   
   unsigned int dist, i=1;  
@@ -376,8 +376,8 @@ unsigned int getLengthOfLMS(unsigned char *s,
 }
 
 unsigned int nameSubstr(unsigned int *SA, 
-  unsigned char *s, unsigned int *s1, unsigned int n, 
-  unsigned int m, unsigned int n1, int level) {
+			unsigned char *s, unsigned int *s1, unsigned int n, 
+			unsigned int m, unsigned int n1, int level) {
   unsigned int i, j, cur_t, succ_t;
 
   // init the name array buffer
@@ -454,8 +454,8 @@ void getSAlms(unsigned int *SA,
 
 
 void SACA_K(unsigned char *s, unsigned int *SA,
-  unsigned int n, unsigned int K,
-  unsigned int m, int level) {
+	    unsigned int n, unsigned int K,
+	    unsigned int m, int level) {
   unsigned int i;
   unsigned int *bkt=NULL;
 
@@ -514,15 +514,15 @@ void SACA_K(unsigned char *s, unsigned int *SA,
 }
 
 
-// TODO: Replace char with unsigned char everywhere probably
+// TODO: Replace int with long long a lot (via defines?)
 // This function is a drop-in replacement for histsort() (except
 // that it expects a 0 bp after the sequence :]), which, while
 // slower for len<10^9, also uses a lot less memory
 unsigned int *csuff_arr(const char *seq, unsigned int len) {
-	// seq is assumed to be given in compressed form form and be
-	// null-terminated (having an internal zero byte is fine)
-	// Testing, ahoy!
-	unsigned int *SA = malloc((len+1) * sizeof(int));
-	SACA_K((unsigned char *)seq, SA, len+1, 4 /* Not 256*/, len+1, 0);
-	return SA;
+  // seq is assumed to be given in compressed form form and be
+  // null-terminated (having an internal zero byte is fine)
+  // Testing, ahoy!
+  unsigned int *SA = malloc((len+1) * sizeof(int));
+  SACA_K((unsigned char *)seq, SA, len+1, 4 /* Not 256*/, len+1, 0);
+  return SA;
 }

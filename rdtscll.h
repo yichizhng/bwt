@@ -8,13 +8,13 @@
 // up in %edx...
 /*
 
-#define rdtscll(val) \
-	__asm__ __volatile__ ("rdtsc" : "=A" (val));
+  #define rdtscll(val)				\
+  __asm__ __volatile__ ("rdtsc" : "=A" (val));
 
 /*/
 
 #define rdtscll(val) \
-  __asm__ __volatile__ ("rdtsc\n\tshl $32, %%rdx\n\tor %%rdx, %%rax" : \
+  __asm__ __volatile__ ("rdtsc\n\tshl $32, %%rdx\n\tor %%rdx, %%rax" :	\
 			"=A" (val) : : "rdx");
 
 
