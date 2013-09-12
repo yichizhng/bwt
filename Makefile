@@ -4,11 +4,21 @@ CFLAGS = -pthread -O3 -std=gnu99 -m64 -fomit-frame-pointer
 # likes turning on extra warnings and reading through them
 # At the very least, valgrind has nothing to complain about
 
+# With -Wall -pedantic -Wextra gcc will complain about things like
+# char indexing into arrays (intended and correct behavior), comparison
+# between unsigned and signed ints (intended and correct behavior),
+# values possibly being used uninitialized (they aren't), argc being
+# ignored (it is, but the program will segfault quickly with wrong arguments),
+# passing pointer targets with different signedness (that's a bug, it should
+# be obvious that it should be unsigned), and some garbage about parentheses
 
-all: bwt histtest histcomptest fmitest searchtest
+all: bwt histtest histcomptest fmitest searchtest smw
 
 %.o: %.c
 	$(CC) -c -o $@ $< $(CFLAGS)
+
+smw: smw.o
+	gcc -o $@ $^ $(CFLAGS)
 
 searchtest: searchtest.o histsortcomp.o seqindex.o csacak.o
 	gcc -o $@ $^ $(CFLAGS)
