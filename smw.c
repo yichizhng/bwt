@@ -1,6 +1,7 @@
 // Slow implementation of Smith-Waterman algorithm for local alignments
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 static inline int max(int a, int b, int c) {
   return (a > b) ? ((a > c) ? a : c) : ((b > c) ? b : c);
 }
@@ -36,7 +37,8 @@ int** smw(const char *str1, int len1, const char *str2, int len2) {
       //if (values[i][j] < 0) // uncomment to use smith-waterman
       //values[i][j] = 0; // keep commented to use needleman-wunsch
       // smith-waterman is harder to backtrack, if you're wondering
-      // what the problem is
+      // what the problem is, so it's better to just pass appropriate length
+      // strings in to get local alignments that way
     }
   }
   // In order to retrieve the correct path we need to iterate backward from
