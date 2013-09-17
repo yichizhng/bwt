@@ -1,13 +1,43 @@
-// Slow implementation of Smith-Waterman algorithm for local alignments
+// Slowish implementation of Smith-Waterman algorithm for local alignments
+// There are optimizations involving SIMD instructions but they don't really
+// seem that worthwhile
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "rdtscll.h"
+
 static inline int max(int a, int b, int c) {
   return (a > b) ? ((a > c) ? a : c) : ((b > c) ? b : c);
 }
 
+// Optimization of needleman-wunsch by using a 1d output array; is faster by a
+// pretty hilarious factor (>40x) due to the lack of another level of
+// indirection and/or cache optimizations and/or lack of malloc() calls
+int *nw_fast(const char *str1, int len1, const char *str2, int len2) {
+  int *values, i, j;
+  values = malloc((len1 + 1) * (len2 + 1) * sizeof(int));
+  // "Zero" first row
+  for (j = 0; j <= len2; ++j) {
+    values[j] = -j;
+  }
+  for (i = 1; i <= len1; ++i) {
+    // Zero first column
+    values[i * (len2 + 1)] = -i;
+    for (j = 1; j <= len2; ++j) {
+      // Update cell appropriately
+      values[i * (len2 + 1) + j] =
+	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?2:-1),
+	    values[i * (len2 + 1) + j - 1] - 1,
+	    values[(i-1) * (len2 + 1) + j] - 1);
+    }
+  }
+  return values;
+}
+
 // Note that this implementation takes the full O(m*n) memory; it is possible
-// to do with less, but much more annoying
+// to do with less (especially if we only want the optimal
+// alignment), but much more annoying
+// The slow and obnoxious implementation
 int** smw(const char *str1, int len1, const char *str2, int len2) {
   // Allocate a 2-D array for values
   int **values, i, j;
@@ -48,13 +78,27 @@ int** smw(const char *str1, int len1, const char *str2, int len2) {
 
 int main(int argc, char **argv) {
   // Take two inputs from arguments
-  int **val, i, j, k, ii;
+  long long int a, b;
+  int **val, i, j, k, ii, *fval;
   char *buf1, *buf2;
   if (argc < 3)
     return -1;
+  rdtscll(a);
   val = smw(argv[1], strlen(argv[1]),argv[2], strlen(argv[2]));
-  // Print the optimal local alignment; we can do this by recursing backwards
+  rdtscll(b);
+  // Do something with a and b :)
+  printf("%f\n", (double)(b-a) / ((double)(strlen(argv[1]) * strlen(argv[2]))));
+  // Print the optimal global alignment; we can do this by recursing backwards
   // and storing (or better, by reversing the string before aligning!)
+
+  rdtscll(a);
+  fval = nw_fast(argv[1], strlen(argv[1]), argv[2], strlen(argv[2]));
+  rdtscll(b);
+  printf("%f\n", (double)(b-a) / ((double)(strlen(argv[1]) * strlen(argv[2]))));
+
+
+  // Note that backtracking on a Needleman-Wunsch matrix is easier than
+  // on a Smith-Waterman, because we don't have to deal with all the zeroes
   i = strlen(argv[1]);
   j = strlen(argv[2]);
   buf1 = malloc(i + j + 1);
@@ -127,4 +171,12 @@ int main(int argc, char **argv) {
     free(val[i]);
   }
   free(val);
+
+  for (i = 0; i <= strlen(argv[1]); ++i) {
+    for (j = 0; j <= strlen(argv[2]); ++j) {
+      printf("%3d", fval[i * (1+strlen(argv[2])) + j]);
+    }
+    putchar('\n');
+  }
+  free(fval);
 }
