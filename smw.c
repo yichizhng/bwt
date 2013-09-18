@@ -21,6 +21,21 @@ struct gap_stitch {
   char *gen_pat; // Parts of the genome that the pattern was mapped onto
 };
 
+struct gap_stitch *nw_stitch(const char *pat, int pat_len, const char *gen_l,
+			     const char *gen_r, int gen_len) {
+  int *valuesl, *valuesr, i;
+  char *patrev, *gen_rrev;
+  // We need to reverse pat and gen_r to use them as input for nw_gap_l
+  patrev = malloc(pat_len);
+  gen_rrev = malloc(gen_len);
+  for (i = 0; i < pat_len; ++i) {
+    patrev[i] = pat[pat_len - i];
+  }
+  for (i = 0; i < gen_len; ++i) {
+    gen_rrev[i] = gen_r[gen_len - i];
+  }
+}
+
 // Aligns from the left; obviously we can reuse this to align from the right
 // just by reversing everything
 int *nw_gap_l(const char *pat, int pat_len, const char *gen, int gen_len) {
@@ -37,8 +52,8 @@ int *nw_gap_l(const char *pat, int pat_len, const char *gen, int gen_len) {
   for (j = 0; j <= gen_len; ++j) {
     values[j] = -j;
   }
-  values[len2 + 1] = 0;
-  values[len2 + 2] = 0;
+  values[gen_len + 1] = 0;
+  values[gen_len + 2] = 0;
 
   // Deal with rest of matrix
   for (i = 1; i <= pat_len; ++i) {

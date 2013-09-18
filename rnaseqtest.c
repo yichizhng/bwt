@@ -13,6 +13,17 @@ static inline unsigned char getbase(const char *str, int idx) {
 	return ((str[idx>>2])>>(2*(3-(idx&3)))) & 3;
 }
 
+// Calculates floor(log_4(x)) + 1; as far as I'm concerned, this is the same
+// as a ceiling (and will lead to one of the oddest edge cases if I leave it
+// like this :])
+int log_4(int x) {
+  union {
+    int i;
+    float f;
+  } blah;
+  blah.f = (float)(2*x);
+  return ((blah.i >> 24) - 63);
+}
 
 typedef struct _fmi {
 	char *bwt;
