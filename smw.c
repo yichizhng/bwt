@@ -10,6 +10,61 @@ static inline int max(int a, int b, int c) {
   return (a > b) ? ((a > c) ? a : c) : ((b > c) ? b : c);
 }
 
+// A struct for returning information relating to a gap stitching
+struct gap_stitch {
+  int len1; // Number of nucleotides matched onto the first part
+  // Note that this includes indels on both sides!
+  int len2; // Analogous
+  // Hint: strlen(pattern) == strlen(gen_pat) == len1 + len2 + 1
+  char *pattern; // Printable representation of the alignment of the pattern
+  // '/' is used to denote the gap
+  char *gen_pat; // Parts of the genome that the pattern was mapped onto
+};
+
+// Aligns from the left; obviously we can reuse this to align from the right
+// just by reversing everything
+int *nw_gap_l(const char *pat, int pat_len, const char *gen, int gen_len) {
+  // gen_len should probably only be a bit larger than pat_len; we can't
+  // have *that* many indels
+  
+  // The main difference is that the return array now has two extra columns
+  // which denote the highest score found in each row and the location of
+  // that score (for backtracking purposes)
+  
+  int *values, i, j, m, m_pos;
+  values = malloc((pat_len + 1) * (gen_len + 3) * sizeof(int));
+  // Initialize first row
+  for (j = 0; j <= gen_len; ++j) {
+    values[j] = -j;
+  }
+  values[len2 + 1] = 0;
+  values[len2 + 2] = 0;
+
+  // Deal with rest of matrix
+  for (i = 1; i <= pat_len; ++i) {
+    // Initialize first column
+    values[i * (gen_len + 3)] = -i;
+    m = -i;
+    m_pos = 0;
+    for (j = 1; j <= gen_len; ++j) {
+      // Update cell appropriately
+      values[i * (gen_len + 3) + j] = 
+	max(values[(i-1) * (gen_len + 3) + j - 1] +
+	    ((pat[i-1] == gen[j-1])?2:-1),
+	    values[i * (gen_len + 3) + j - 1] - 1,
+	    values[(i-1) * (gen_len + 3) + j] - 1);
+      if (values[i * (gen_len + 3) + j] > m) {
+	m = values[i * (gen_len + 3) + j];
+	m_pos = j;
+      }
+    }
+    // Write the appropriate m and m_pos
+    values[i * (gen_len + 3) + gen_len + 1] = m;
+    values[i * (gen_len + 3) + gen_len + 2] = m_pos;
+  }
+  return values;
+}
+
 // Optimization of needleman-wunsch by using a 1d output array; is faster by a
 // pretty hilarious factor (>40x) due to the lack of another level of
 // indirection and/or cache optimizations and/or lack of malloc() calls
