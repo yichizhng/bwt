@@ -159,12 +159,8 @@ static inline int fnw_acc(int *values, int i, int j, int width) {
 // (in fact, the first in the FM-index) match if multiple ones are found
 // (TODO: fix that if necessary)
 
-// One trick we can do is to drop the cutoff by some (significant) amount
-// to do a search with around two nts skipped (on the pattern); this allows
-// us to do a lot less stitching if we find the pattern to be immediately
-// extensible (question: how fast is unc_sa()? And how fast can we calculate
-// the inverse SA to "extend" searches?). Alternatively we could N-W it,
-// but that's pretty slow(ish)
+// TODO: write a more specialized version for "continuing" searches (e.g. take
+// a gap of 3 on either side); stitching is trivial by comparison
 int mms_search(const fm_index *fmi, const char *pattern, int len,
 	       int *len_p, int cutoff) {
   // Structurally almost identical to locate(), except for the way we use
@@ -192,15 +188,168 @@ int mms_search(const fm_index *fmi, const char *pattern, int len,
   return unc_sa(fmi, start);
 }
 
+// Another variant of locate() (actually more a variant of mms_search());
+// this one takes into account the position (on the genome) of the previous
+// MMS found and tries to continue it if possible; to compensate for this
+// we allow a much smaller value for cutoff (noting that the relation of
+// cutoff to statistical significance is exponential!)
+int mms_continue(const fm_index *fmi, const char *pattern, int len,
+		 int *len_p, int cutoff, int lastpos) {
+  // Tries to continue a MMS search with the knowledge of the previous position;
+  // this allows us to (usually) continue the search if we have some mismatch
+  // or indel rather than a splice site
+  int start, end, i, j, pos;
+  start = fmi->C[pattern[len-1]];
+  end = fmi->C[pattern[len-1]+1];
+  for (i = len-2; i >= 0; --i) {
+    if (end <= start) {
+      *len_p = len - i + 1;
+      if (len - i > cutoff) {
+	// Check every current match; return one which is before lastpos if
+	// possible, no match otherwise (this may seem harsh, but meh to you
+	// too. This is really unlikely to matter unless we have highly
+	// repetitive/similar sequences in the genome)
+	for (j = start; j < end; ++j) {
+	  pos = unc_sa(fmi, j) + 1;
+	  if (lastpos - (pos + (len - i)) > 3) {
+	    // We do allow for a small overlap, since we can fit that into
+	    // the stitching routine
+	    return pos;
+	    // This has the potential to be wrong, but it's fairly unlikely.
+	    // (i.e. we might skip over the correct match to get the wrong one)
+	  }
+	}
+      }
+      return -1;
+    }
+    if (len - i == cutoff) {
+      // Check all currently valid matches. If one is "near" lastpos (which
+      // I'll hardcode as being within 6 nucleotides, or 2 codons, allowing a
+      // fairly large tolerance in terms of mismatches), use it (and ignore all
+      // other matches); otherwise continue the search as normal.
+      
+      for (j = start; j < end; ++j) {
+	// Check the position of j
+	pos = unc_sa(fmi, j);
+	if ((pos < lastpos) && (lastpos - (pos + cutoff) <= 6)) {
+	  start = j;
+	  end = j+1;
+	  break;
+	}
+      }
+    }
+    start = fmi->C[pattern[i]] + rank(fmi, pattern[i], start);
+    end = fmi->C[pattern[i]] + rank(fmi, pattern[i], end);
+  }
+  *len_p = len;
+  return unc_sa(fmi, start);
+}
+
+// Another variant of locate(); this one does not try to continue the previous
+// search, so this has a loop removed from mms_continue.
+int mms_gap(const fm_index *fmi, const char *pattern, int len,
+		 int *len_p, int cutoff, int lastpos) {
+  // Tries to continue a MMS search with the knowledge of the previous position;
+  // We abandon explicitly isolating the match that continues the previous
+  // search (one interesting "optimization" to try would be to isolate the
+  // match closest to the previous search and see whether that improves things)
+  int start, end, i, j, pos;
+  start = fmi->C[pattern[len-1]];
+  end = fmi->C[pattern[len-1]+1];
+  for (i = len-2; i >= 0; --i) {
+    if (end <= start) {
+      *len_p = len - i + 1;
+      if (len - i > cutoff) {
+	for (j = start; j < end; ++j) {
+	  pos = unc_sa(fmi, j) + 1;
+	  if (lastpos - (pos + (len - i)) > 3) {
+	    return pos;
+	  }
+	}
+      }
+      return -1;
+    }
+    start = fmi->C[pattern[i]] + rank(fmi, pattern[i], start);
+    end = fmi->C[pattern[i]] + rank(fmi, pattern[i], end);
+  }
+  *len_p = len;
+  return unc_sa(fmi, start);
+}
+
+// "Traditional" gapped alignment search
+// Unidirectional search with no real tricks; meant to be fast, but doesn't
+// guarantee best alignment or finding an alignment if one exists
+// Also supports ungapped pretty much by default, it's probably better at that
+// than you would think
+
+// TODO: helper functions to stitch on the "head" and "tail" of the search
+// And some stuff to help print all the crap this is going to produce
+// It seems unlikely that a given strand of RNA will span more than, say,
+// 10 exons, but who knows? (Hardcoded limits are for systems people)
 void rna_seq(const fm_index *fmi, const char *pattern, int len) {
   // Use maximum mappable *suffix* (generated via backward search, as opposed
   // to binary search, which is slow) combined with the Needleman-Wunsch
   // algorithm (for stitching purposes mostly) to align RNA sequences
 
-  // Motivation: STARS uses maximum mappable prefix generated via binary
+  // Motivation: STARS uses maximum mappable prefixes generated via binary
   // search on the FM-index; this is obviously silly (and O(m log(n))), and
-  // so we're better off doing a backwards search on the suffix instead
-  // to get O(m + log(n)) time
+  // so we're better off doing a backwards search to get (functionally
+  // equivalent) maximum mappable suffixes instead to get O(m + log(n)) time
+  // We could just reverse the genome to get equivalent results anyway
+  
+  // TODO: Adding a reverse FM-index may allow us to double anchor the search
+  // for better accuracy
+
+  int i, mmslen, mmspos, genpos, nextpos;
+  // We begin indexing from the end of the pattern. Reverse search to find
+  // a "statistically significant" match (len - log_4(fmi->len) > 2, for
+  // example, makes a decent cutoff). Use needleman-wunsch or a specialized
+  // variation (hint: it's possible to generate statistics on the highest
+  // score per row and where it's located, which lets us do a stitch alignment)
+  i = len;
+  // TODO: replace 14 with some appropriate expression. Probably could
+  // be found by some tuning, and/or interpreting the number as a float (as
+  // per the trick to find the square root by casting back and forth)
+  //
+  mmspos = mms_search(fmi, pattern, i, &mmslen, 14);
+  while ((mmspos == -1) && i > 10) {
+    --i;
+    mmspos = mms_search(fmi, pattern, i, &mmslen, 14);
+    // We need *somewhere* to start...
+  }
+  // Now that we have a starting position, "stitch" the stuff behind it if
+  // necessary
+  // TODO: write the helper function to do that
+
+  while (i > 10) {
+    genpos = mmspos;
+    // Skip ahead 3 nucleotides (i.e. 1 codon; this deals with deletions of entire
+    // codons, which is much more common than a frame shift (which generally
+    // causes nonsense errors); it also allows us to catch shorter runs of
+    // mismatches should that be necessary
+    // We could probably skip by a smaller amount, but I foresee problems with
+    // either too much or too little, and this is something that could probably
+    // be tuned, or perhaps given as a command line option
+    i -= 3;
+    // Try continuing the search from before
+    nextpos = mms_continue(fmi, pattern, i, &mmslen, 10, mmspos);
+    if (nextpos != -1) {
+      // TODO: Stitch the matches as appropriate
+    }
+    else {
+      // Assume that there's a gap (there might not be, but who knows)
+      while (i > 10) {
+	--i;
+	// Try to align starting here
+	nextpos = mms_gap(fmi, pattern, i, &mmslen, 14, mmspos);
+	if (nextpos != -1) {
+	  // TODO: do something with this
+	  break;
+	}
+      }
+    }
+    // Main loop of function
+  }
 }
 
 
@@ -225,6 +374,9 @@ int main(int argc, char **argv) {
   len = ftell(fp);
   fseek(fp, 0L, SEEK_SET); // This is *technically* not portable
   seq = malloc(len/4+1);
+  // Complicated crap to take input and put it into compressed form
+  // I should probably refactor this code at some point, it seems useful
+  // The inverse function is much easier to write thankfully
   for (i = 0; i < len/4 + 1; ++i) {
     switch(fgetc(fp)) {
     case 'C': c = 64; break;
