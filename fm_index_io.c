@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "seqindex.h"
+#include "fmitest.h"
 
 // Implements reading FM-indexes from file and writing them to file
 // Something that I really should have done a while back -.-
@@ -70,4 +71,22 @@ int read_fmi(FILE *in, fm_index *fmi) {
   // TODO: change this code if that ever changes, or maybe code a macro for it
   fmi->rank_index = seq_index(fmi->bwt, len, 32, fmi->lookup);
   return ferror(in);
+}
+
+// This thingy will build an FM-index and then write it to disk, because
+// that is a thing that should be done
+int main(int argc, char **argv) {
+  // Usage: ./fmibuild genome_name index_name
+  FILE *gen, *idx;
+  fm_index *fmi;
+  char *seq
+  if (argc != 3) {
+    exit(-1); // Me, give meaningful error messages? Never!
+  }
+  // Open up the genome; I suppose for now we may as well assume it's not
+  // compressed, which means we must now compress it -.-;; (if it were
+  // we would be able to use fread directly)
+
+  // TODO: actually do that :) I think we want some lookup arrays to make
+  // things easier on me (or at least make for less branch predictions?)
 }
