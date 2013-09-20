@@ -10,6 +10,12 @@ static inline int max(int a, int b, int c) {
   return (a > b) ? ((a > c) ? a : c) : ((b > c) ? b : c);
 }
 
+// TODO: more typedefs? I don't personally find C's default types confusing,
+// but a lot of "production" code I've seen is full of it. Maybe they're too
+// dependent on IDEs?
+
+// TODO: move this struct into another file, most likely. I have a lot of
+// reused / reusable code which I should really reorganize
 // A struct for returning information relating to a gap stitching
 struct gap_stitch {
   int len1; // Number of nucleotides matched onto the first part
@@ -38,6 +44,7 @@ struct gap_stitch *nw_stitch(const char *pat, int pat_len, const char *gen_l,
 
 // Aligns from the left; obviously we can reuse this to align from the right
 // just by reversing everything
+// To be used as a component in aligning pretty much everything.
 int *nw_gap_l(const char *pat, int pat_len, const char *gen, int gen_len) {
   // gen_len should probably only be a bit larger than pat_len; we can't
   // have *that* many indels
@@ -107,7 +114,7 @@ int *nw_fast(const char *str1, int len1, const char *str2, int len2) {
 // Note that this implementation takes the full O(m*n) memory; it is possible
 // to do with less (especially if we only want the optimal
 // alignment), but much more annoying
-// The slow and obnoxious implementation
+// The slow and obnoxious implementation, returns a 2D array with results
 int** smw(const char *str1, int len1, const char *str2, int len2) {
   // Allocate a 2-D array for values
   int **values, i, j;
@@ -146,6 +153,7 @@ int** smw(const char *str1, int len1, const char *str2, int len2) {
   return values;
 }
 
+// Testing routine; should probably be removed or moved to a different file
 int main(int argc, char **argv) {
   // Take two inputs from arguments
   long long int a, b;

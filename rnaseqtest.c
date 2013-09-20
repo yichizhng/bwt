@@ -265,6 +265,8 @@ int mms_gap(const fm_index *fmi, const char *pattern, int len,
   // search (one interesting "optimization" to try would be to isolate the
   // match closest to the previous search and see whether that improves things)
   int start, end, i, j, pos;
+  int score; // Keep a running tally of the score of the alignment so far
+  // TODO: borrow scoring ideas from bowtie or something
   start = fmi->C[pattern[len-1]];
   end = fmi->C[pattern[len-1]+1];
   for (i = len-2; i >= 0; --i) {
@@ -323,7 +325,7 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
   // per the trick to find the square root by casting back and forth)
   //
   mmspos = mms_search(fmi, pattern, i, &mmslen, 14);
-  while ((mmspos == -1) && i > 10) {
+  while ((mmspos == -1) && i > 14) {
     --i;
     mmspos = mms_search(fmi, pattern, i, &mmslen, 14);
     // We need *somewhere* to start...
@@ -349,7 +351,7 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
     }
     else {
       // Assume that there's a gap (there might not be, but who knows)
-      while (i > 10) {
+      while (i > 14) {
 	--i;
 	// Try to align starting here
 	nextpos = mms_gap(fmi, pattern, i, &mmslen, 14, mmspos);
@@ -361,6 +363,7 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
     }
     // Main loop of function
   }
+  // TODO: Do something at the end of the thingy
 }
 
 

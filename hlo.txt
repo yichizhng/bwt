@@ -1,0 +1,62 @@
+High level overview
+
+Searching for a string in a file is a long-standing problem in computer science,
+and various data structures and algorithms have been devised for such a problem
+(particularly for dealing with long files). This relates closely to a common
+problem in bioinformatics, the alignment of short reads to reference genomes.
+
+One of the first data structures developed for the string search problem
+(as well as many other string operations) is the suffix tree. It allows exact
+string search in O(m) time complexity (where m is the length of the string),
+although it requires O(n) time to build the tree. Other problems are prohibitive
+memory usage (the suffix tree for the human genome (~3.4e9 nucleotides) would
+be about 68GB) and poor cache locality. The suffix array requires about 1/5
+of the memory of a suffix tree and can also be constructed in linear time; it
+requires auxiliary data (for example, an LCP array) to perform some string
+operations and is harder to update if the corpus (i.e. the indexed string)
+changes; neither of these limitations matters for sequence alignment.
+
+However, the suffix array does not suffice to provide O(m) exact search (the
+LCP array allows us to do so, but would bring the memory requirement back up to
+~40% that of the suffix tree). However, using the Burrows-Wheeler transform, we
+can accomplish this in less memory than is required to store the suffix array.
+
+The first step towards sequence alignment is building a suffix array (i.e.
+sorted list of suffixes) from the genome. There are many algorithms to do this;
+the ones chosen were a custom histogram sort (O(n log n) average time) and
+SACA-K (Ge Nong's refinement of the earlier SA-IS algorithm) (O(n) average time)
+
+Histogram sort:
+Pros:
+Good cache locality
+Easily parallelizable
+Much faster than linear time algorithms for "small" cases (<10^9 nucleotides)
+
+Cons:
+Very memory inefficient; this could be improved, but it seems unnecessary (it
+uses <1GB for 1e8 base pairs, and is only about twice as fast as SACA-K at
+that size)
+Performance scales poorly for very large genomes
+
+SACA-K:
+Pros:
+Good cache locality
+Extremely small memory footprint (uses constant auxiliary space)
+Scales well to larger genomes (although several indexing variables have type
+int right now, so we can't handle genomes with much more than 2 billion base
+pairs)
+
+Cons:
+Slower than histogram sort for small cases
+Induced sorting algorithms are nearly impossible to parallelize
+
+The suffix array is then used to build a FM-index. The FM-index consists of the
+Burrows-Wheeler transformed string (constructed trivially as bwt[i] = 
+seq[SA[i]-1] for SA[i] != 0) with auxiliary data to calculate rank in constant
+time. This is implemented by storing a fraction of the suffix array, a fraction
+of the rank, and the total counts of each nucleotide in the sequence.
+
+An FM-index allows for the implementation of exact search in O(n + log_c m),
+where c is chosen at the time of construction of the index (it is possible
+to choose m, but this dramatically increases memory usage, because it requires
+that we store the entire suffix array,
