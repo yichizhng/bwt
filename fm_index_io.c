@@ -69,6 +69,9 @@ int read_fmi(FILE *in, fm_index *fmi) {
 
   // Compression ratio on rank_index is hardcoded at 32.
   // TODO: change this code if that ever changes, or maybe code a macro for it
+  // If we allow it to be user-changable we could write it to the file as well
+  // This seems rather inadvisable though; never give the user too many
+  // options ;)
   fmi->rank_index = seq_index(fmi->bwt, len, 32, fmi->lookup);
   return ferror(in);
 }
@@ -79,7 +82,8 @@ int main(int argc, char **argv) {
   // Usage: ./fmibuild genome_name index_name
   FILE *gen, *idx;
   fm_index *fmi;
-  char *seq
+  char *seq;
+  int len;
   if (argc != 3) {
     exit(-1); // Me, give meaningful error messages? Never!
   }
@@ -87,6 +91,11 @@ int main(int argc, char **argv) {
   // compressed, which means we must now compress it -.-;; (if it were
   // we would be able to use fread directly)
 
-  // TODO: actually do that :) I think we want some lookup arrays to make
-  // things easier on me (or at least make for less branch predictions?)
+  // TODO: actually do that :) steal the code from searchtest.c probably, that
+  // part is working as far as I can tell
+  gen = fopen(argv[1], "rb");
+  fseek(seq, 0L, SEEK_END); // Technically not portable
+  len = ftell(seq);
+  fseek(seq, 0L, SEEK_SET);
+  
 }

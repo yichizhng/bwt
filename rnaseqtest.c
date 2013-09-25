@@ -57,9 +57,9 @@ fm_index *make_fmi(const char *str, int len) {
   // histsort(), on the other hand, is cache-friendly and multithreaded
   // idxs = csuff_arr(str, len);
   fmi = malloc(sizeof(fm_index));
-  fmi->idxs = malloc((len+1) / 32 * sizeof(int));
+  fmi->idxs = malloc((1 + (len / 32)) * sizeof(int));
   // idxs is probably more properly referred to as "CSA"
-  for (i = 0; i < (len+1)/32; ++i)
+  for (i = 0; i < (1+(len / 32)); ++i)
     fmi->idxs[i] = idxs[32 * i];
   fmi->bwt = malloc((len+3)/4);
   fmi->len = len;
@@ -77,9 +77,11 @@ fm_index *make_fmi(const char *str, int len) {
 
 int rank(const fm_index *, char, int);
 
+// TODO: Does the compiler optimize this function correctly? (In particular,
+// will the ternary operator help?)
 static inline int lf(const fm_index *fmi, int idx) {
   if (idx == fmi->endloc)
-    return 0;
+    return 0; // Not likely, but hey.
   return fmi->C[getbase(fmi->bwt,idx - (idx > fmi->endloc))] +
     rank(fmi, getbase(fmi->bwt,idx - (idx > fmi->endloc)), idx);
 }
@@ -107,6 +109,8 @@ int reverse_search(const fm_index *fmi, const char *pattern, int len) {
   return end - start+1;
 }
 
+// Comment: the compiler will inline this function at sufficiently high
+// optimization levels
 int unc_sa(const fm_index *fmi, int idx) {
   // Calculates SA[idx] given an fm-index ("enhancedish partial suffix array"?)
   int i;
@@ -159,9 +163,10 @@ void loc_search(const fm_index *fmi, const char *pattern, int len,
 }
 
 // GCC suggests that static inline functions are as fast as macros
+// 
 static inline int fnw_acc(int *values, int i, int j, int width) {
   // Width is len2 in the construction of values
-  return values[i * (width2 + 1) + j];
+  return values[i * (width + 1) + j];
 }
 
 // Performs a maximum mappable suffix search; returns the position of the
@@ -320,10 +325,8 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
   // variation (hint: it's possible to generate statistics on the highest
   // score per row and where it's located, which lets us do a stitch alignment)
   i = len;
-  // TODO: replace 14 with some appropriate expression. Probably could
-  // be found by some tuning, and/or interpreting the number as a float (as
-  // per the trick to find the square root by casting back and forth)
-  //
+  // TODO: replace 14 with some appropriate expression. I've written the log4
+  // function (by abusing unions in a somewhat non-portable way)
   mmspos = mms_search(fmi, pattern, i, &mmslen, 14);
   while ((mmspos == -1) && i > 14) {
     --i;
@@ -333,7 +336,7 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
   // Now that we have a starting position, "stitch" the stuff behind it if
   // necessary
   // TODO: write the helper function to do that
-
+  i -= mmslen; // LOL forgot that.
   while (i > 10) {
     genpos = mmspos;
     // Skip ahead 3 nucleotides (i.e. 1 codon; this deals with deletions of entire
@@ -346,17 +349,21 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
     i -= 3;
     // Try continuing the search from before
     nextpos = mms_continue(fmi, pattern, i, &mmslen, 10, mmspos);
+    printf("%d %d\n", i, mmslen);
     if (nextpos != -1) {
       // TODO: Stitch the matches as appropriate
+      i -= mmslen;
     }
     else {
-      // Assume that there's a gap (there might not be, but who knows)
+      // Assume that there's a gap (there might not be (multiple indels/
+      // mismatches near each other) but who knows?)
       while (i > 14) {
 	--i;
 	// Try to align starting here
 	nextpos = mms_gap(fmi, pattern, i, &mmslen, 14, mmspos);
 	if (nextpos != -1) {
 	  // TODO: do something with this
+	  i -= mmslen;
 	  break;
 	}
       }
@@ -364,6 +371,8 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
     // Main loop of function
   }
   // TODO: Do something at the end of the thingy
+  //  printf("%d %d ", mmspos, nextpos);
+  // TODO: something more useful
 }
 
 
@@ -431,23 +440,21 @@ int main(int argc, char **argv) {
   // Do some fun tests (load up a length 30 sequence (starting from anywhere
   // on the "genome") and backwards search for it on the fm-index (and we're
   // going to fix locate() now too)
-  buf = malloc(12); // The C/C++ standard guarantees that sizeof(char) == 1
+  buf = malloc(20); // The C/C++ standard guarantees that sizeof(char) == 1
   srand(time(0));
   rdtscll(a);
   for (i = 0; i < 1000000; ++i) {
     // Pick some randomish location to start from (i.e. anywhere from 0
     // to len-21)
-    j = rand() % (len-12);
-    for (k = 0; k < 12; ++k) {
+    j = rand() % (len-20);
+    for (k = 0; k < 20; ++k) {
       buf[k] = getbase(seq, j+k);
     }
-    jj = locate(fmi, buf, 12);
-    //if (j != jj && j != -1)
-    //        printf("Ruh roh ");
-    //    printf("%d %d\n", j, jj);
+    rna_seq(fmi, buf, 20);
+    jj = locate(fmi, buf, 20);
   }
   rdtscll(b);
-  fprintf(stderr, "Took %lld cycles to search 1000000 12bp sequences\n",
+  fprintf(stderr, "Took %lld cycles to search 1000000 12bp sequences (twice)\n",
 	 b-a);
   fprintf(stderr, "(%f seconds), over a genome of length %d\n", 
 	 ((double)(b-a)) / 2500000000, len);

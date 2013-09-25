@@ -153,6 +153,8 @@ int** smw(const char *str1, int len1, const char *str2, int len2) {
   return values;
 }
 
+/*
+
 // Testing routine; should probably be removed or moved to a different file
 int main(int argc, char **argv) {
   // Take two inputs from arguments
@@ -258,3 +260,5 @@ int main(int argc, char **argv) {
   }
   free(fval);
 }
+
+*/
