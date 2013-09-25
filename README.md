@@ -66,8 +66,11 @@ achieve O(n) runtime while using minimal auxiliary space. SACA-K is one of these
 algorithms, and is an improvement on SA-IS; it uses practically constant space
 (to be precise, it's O(log n)) and is essentially linear in runtime, but is
 slower than the multithreaded histogram sort in most practical cases (a highly
-repetitive sequence is the pathological case for histogram sort). SACA-K uses
-an induced sort, which is one of the three major SA algorithm designs.
+repetitive sequence is the pathological case for histogram sort). SACA-K was
+chosen mainly to minimize memory usage; SA-IS already has one of the smallest
+memory usages (hint: my adaptation of SACA-K included transforming it to allow
+the use of the compressed form, saving a full 75% memory usage (i.e. as compared
+to storing one nucleotide per byte))
 
 Backward search can be done in O(m) time (i.e. constant in sequence length), but
 the locate() function (i.e. associating a particular match with its position
@@ -117,6 +120,12 @@ algorithm (implemented in smw.c) to stitch together these matches.
 
 Summary of files:
 
+Makefile
+A fairly normal makefile with fairly normal compiler options. By default, -O3
+and -fomit-frame-pointer are used. Note that make clean will delete temporary
+files (i.e. ones ending with tildes), but not emacs crash recovery files
+(ones with # on both sides)
+
 bwt.c
 Simple implementation of a Burrows-Wheeler transform using qsort() and strcmp()
 (Note that its implementation of suffix array construction does not really give
@@ -154,9 +163,8 @@ Implementations of rdtscll for 32-bit and 64-bit platforms via #defines and
 inline assembly (for performance testing)
 
 rnaseqtest.c
-Testing code for RNA-seq; modeled mostly after searchtest.c, although we
-need to implement several variants of locate() to take advantage various
-boundary conditions that we can establish
+Testing code for RNA-seq; modeled mostly after searchtest.c, although with
+several variants of locate() to allow us to use some boundary conditions
 
 searchtest.c
 More testing/timing code for the FM-index and backwards search, as well as
@@ -166,5 +174,10 @@ TODO: What's O(log_(n/c)(n))? Why isn't it constant (it should be O(1)?)
 seqindex.c
 Implementation of a constant time rank index (for the Occ() function lookup)
 Uses O(n) auxiliary memory (to hold partial indices)
+
+smw.c
+Implementation of a dynamic programming algorithm (currently Needleman-Wunsch,
+which does global alignments; the idea is that we pass it shorter sequences
+so that its O(mn) running time becomes irrelevant)
 
 TODO: Rewrite and test maximal exact match search (where'd it go?)

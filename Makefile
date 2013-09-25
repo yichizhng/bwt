@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -pthread -std=gnu99 -m64 -fomit-frame-pointer -g
+CFLAGS = -pthread -O3 -std=gnu99 -m64 -fomit-frame-pointer
 # Has no compiler warnings, unless you're the kind of silly person who
 # likes turning on extra warnings and reading through them ("of *course* I'm
 # indexing this array with a char, that's why it has size 256")
@@ -41,6 +41,6 @@ bwt: bwt.o
 	gcc -o $@ $^ $(CFLAGS)
 
 clean:
-	rm -f *.o histtest bwt histcomptest fmitest *~
+	rm -f *.o histtest bwt histcomptest fmitest searchtest rnaseqtest smw *~
 
 .PHONY: clean all

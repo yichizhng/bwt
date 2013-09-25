@@ -46,6 +46,7 @@ void destroy_fmi (fm_index *fmi) {
 	free(fmi);
 }
 
+// Comment: rather memory intensive
 fm_index *make_fmi(const char *str, int len) {
   int *idxs, i;
   fm_index *fmi;
@@ -75,21 +76,17 @@ fm_index *make_fmi(const char *str, int len) {
   return fmi;
 }
 
-int rank(const fm_index *, char, int);
+static inline int rank(const fm_index *fmi, char c, int idx) {
+	if (idx > fmi->endloc)
+		idx--;
+	return seq_rank(fmi->bwt, fmi->rank_index, 16, idx, c, fmi->lookup);
+}
 
-// TODO: Does the compiler optimize this function correctly? (In particular,
-// will the ternary operator help?)
 static inline int lf(const fm_index *fmi, int idx) {
   if (idx == fmi->endloc)
     return 0; // Not likely, but hey.
   return fmi->C[getbase(fmi->bwt,idx - (idx > fmi->endloc))] +
     rank(fmi, getbase(fmi->bwt,idx - (idx > fmi->endloc)), idx);
-}
-
-int rank(const fm_index *fmi, char c, int idx) {
-	if (idx > fmi->endloc)
-		idx--;
-	return seq_rank(fmi->bwt, fmi->rank_index, 16, idx, c, fmi->lookup);
 }
 
 // Runs in O(m) time
@@ -339,9 +336,9 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
   i -= mmslen; // LOL forgot that.
   while (i > 10) {
     genpos = mmspos;
-    // Skip ahead 3 nucleotides (i.e. 1 codon; this deals with deletions of entire
-    // codons, which is much more common than a frame shift (which generally
-    // causes nonsense errors); it also allows us to catch shorter runs of
+    // Skip ahead 3 nucleotides (i.e. 1 codon; this deals with deletions of
+    // entire codons, which is pretty common since it's less likely to cause
+    // nonsense errors); it also allows us to catch shorter runs of
     // mismatches should that be necessary
     // We could probably skip by a smaller amount, but I foresee problems with
     // either too much or too little, and this is something that could probably
@@ -349,7 +346,6 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
     i -= 3;
     // Try continuing the search from before
     nextpos = mms_continue(fmi, pattern, i, &mmslen, 10, mmspos);
-    printf("%d %d\n", i, mmslen);
     if (nextpos != -1) {
       // TODO: Stitch the matches as appropriate
       i -= mmslen;
@@ -371,7 +367,7 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
     // Main loop of function
   }
   // TODO: Do something at the end of the thingy
-  //  printf("%d %d ", mmspos, nextpos);
+  printf("%d %d ", mmspos, nextpos);
   // TODO: something more useful
 }
 
@@ -452,6 +448,7 @@ int main(int argc, char **argv) {
     }
     rna_seq(fmi, buf, 20);
     jj = locate(fmi, buf, 20);
+    printf("%d %d\n", j, jj);
   }
   rdtscll(b);
   fprintf(stderr, "Took %lld cycles to search 1000000 12bp sequences (twice)\n",
