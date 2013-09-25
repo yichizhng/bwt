@@ -5,10 +5,10 @@
 // sequences are also essentially incompressible, so there's no point
 // using a wavelet tree or RRR
 
-// TODO (maybe): I can optimize some code if blocksize is required to be
+// TODO (maybe): We can optimize some code if blocksize is required to be
 // a power of 2 rather than a multiple of 4
 
-#include <stdio.h> /*TODO: remove, once I get debugging done */
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "seqindex.h"
@@ -19,8 +19,6 @@ static inline unsigned char getbase(const char *str, int idx) {
   return ((str[idx>>2])>>(2*(3-(idx&3)))) & 3;
 }
 
-// TODO: Fix code logic, this is a jumbled mess. It does work, though.
-// In particular a lot of my indexing no longer makes sense to me
 int **seq_index(char *bwt, int len, int blocksize,const unsigned char *tbl) {
   // len is, as usual, the length of the bwt. bwt is in compressed form.
   // blocksize is assumed to be a multiple of 4 and is the number of
@@ -111,6 +109,8 @@ int seq_rank(unsigned char *bwt, int **sidx, int blocksize, int idx, char c, con
   return x;
 }
 
+// TODO: Maybe hardcode this table or something, stop it from being called
+// multiple times (e.g. we could just write a function to print it out)
 unsigned char * lookup_table() {
   // Calculates the lookup table for one byte of the sequence (i.e.
   // 4 base pairs). 256 possible combinations * 4 entries per byte

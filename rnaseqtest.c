@@ -244,9 +244,11 @@ int mms_continue(const fm_index *fmi, const char *pattern, int len,
       for (j = start; j < end; ++j) {
 	// Check the position of j
 	pos = unc_sa(fmi, j);
+	fprintf(stderr, "%d\n", lastpos - (pos+cutoff));
 	if ((pos < lastpos) && (lastpos - (pos + cutoff) <= 6)) {
 	  start = j;
 	  end = j+1;
+	  printf("Should be right?\n"); // Hmm.
 	  break;
 	}
       }
@@ -313,7 +315,7 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
   // We could just reverse the genome to get equivalent results anyway
   
   // TODO: Adding a reverse FM-index may allow us to double anchor the search
-  // for better accuracy
+  // for better accuracy? (Particularly if we have paired reads or something)
 
   int i, mmslen, mmspos, genpos, nextpos;
   // We begin indexing from the end of the pattern. Reverse search to find
@@ -323,7 +325,9 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
   // score per row and where it's located, which lets us do a stitch alignment)
   i = len;
   // TODO: replace 14 with some appropriate expression. I've written the log4
-  // function (by abusing unions in a somewhat non-portable way)
+  // function (by abusing unions in a somewhat non-portable way). log2 is
+  // apparently only in C11 (and not implemented in gcc!); check your local
+  // version of tgmath.h to see if you have a library implementation
   mmspos = mms_search(fmi, pattern, i, &mmslen, 14);
   while ((mmspos == -1) && i > 14) {
     --i;
@@ -334,7 +338,8 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
   // necessary
   // TODO: write the helper function to do that
   i -= mmslen; // LOL forgot that.
-  while (i > 10) {
+  //fprintf(stderr, "%d\n", i);
+  while (i > 18) { // There's kind of a point where we should just give up
     genpos = mmspos;
     // Skip ahead 3 nucleotides (i.e. 1 codon; this deals with deletions of
     // entire codons, which is pretty common since it's less likely to cause
@@ -345,7 +350,7 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
     // be tuned, or perhaps given as a command line option
     i -= 3;
     // Try continuing the search from before
-    nextpos = mms_continue(fmi, pattern, i, &mmslen, 10, mmspos);
+    nextpos = mms_continue(fmi, pattern, i, &mmslen, 10, genpos);
     if (nextpos != -1) {
       // TODO: Stitch the matches as appropriate
       i -= mmslen;
@@ -356,7 +361,7 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
       while (i > 14) {
 	--i;
 	// Try to align starting here
-	nextpos = mms_gap(fmi, pattern, i, &mmslen, 14, mmspos);
+	nextpos = mms_gap(fmi, pattern, i, &mmslen, 14, genpos);
 	if (nextpos != -1) {
 	  // TODO: do something with this
 	  i -= mmslen;
@@ -367,7 +372,7 @@ void rna_seq(const fm_index *fmi, const char *pattern, int len) {
     // Main loop of function
   }
   // TODO: Do something at the end of the thingy
-  printf("%d %d ", mmspos, nextpos);
+  printf("%d ", mmspos);
   // TODO: something more useful
 }
 
@@ -436,22 +441,25 @@ int main(int argc, char **argv) {
   // Do some fun tests (load up a length 30 sequence (starting from anywhere
   // on the "genome") and backwards search for it on the fm-index (and we're
   // going to fix locate() now too)
-  buf = malloc(20); // The C/C++ standard guarantees that sizeof(char) == 1
+  buf = malloc(50); // The C/C++ standard guarantees that sizeof(char) == 1
   srand(time(0));
   rdtscll(a);
   for (i = 0; i < 1000000; ++i) {
     // Pick some randomish location to start from (i.e. anywhere from 0
     // to len-21)
-    j = rand() % (len-20);
-    for (k = 0; k < 20; ++k) {
+    j = rand() % (len-50);
+    for (k = 0; k < 50; ++k) {
       buf[k] = getbase(seq, j+k);
     }
-    rna_seq(fmi, buf, 20);
-    jj = locate(fmi, buf, 20);
-    printf("%d %d\n", j, jj);
+    // Now we raaandomly screw up one nucleotide in the middle
+    k = 20 + (rand() % 10);
+    buf[k]^=(char)3;
+    rna_seq(fmi, buf, 50);
+    //jj = locate(fmi, buf, 50);
+    printf("%d\n", j);
   }
   rdtscll(b);
-  fprintf(stderr, "Took %lld cycles to search 1000000 12bp sequences (twice)\n",
+  fprintf(stderr, "Took %lld cycles to search 1000000 50bp sequences (twice)\n",
 	 b-a);
   fprintf(stderr, "(%f seconds), over a genome of length %d\n", 
 	 ((double)(b-a)) / 2500000000, len);

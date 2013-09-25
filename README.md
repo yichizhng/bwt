@@ -1,15 +1,13 @@
 TODO:
-Replace all instances of getbase() with a header defining it (still as a
-static inline function)
 Change FM-Index-building code to switch between 4-threaded histsort and SACA-K
 at a certain length
-Write RNA-seq (after getting enough ideas for it)
-Ideas: stitching, semi-backtracking search, seed/extend with needleman-wunsch
+Fix the length of fmi->idxs (rnaseqtest.c has it right)
+Finish writing RNA-seq (there's some stitching code and a lot of I/O...
 
 Things to consider:
 LF(x) is a fairly inexpensive function (although often resulting in cache
 misses probably...); how much, on average, does storing the entire SA help
-(basically, I expect 15 calls to LF() on average)?
+(basically, we expect 15 calls to LF() on average)?
 
 Methods:
 The basic idea of most modern alignment tools is to use the FM-index (Full-text
@@ -106,35 +104,39 @@ code, but I imagine it tries replacing a character in the sequence with one
 that results in more matches at that particular point). Seed-and-extend methods
 (which originated when the main method of sequence alignment was hashing) are
 also viable, with seeds being generated via various types of search (STAR, for
-example, uses binary search, but we could simply use backwards search on the
-reverse FM-index...)
+example, uses binary search to find what it refers to as a maximum mappable
+prefix)
 
 rnaseqtest.c contains an implementation which does gapped alignment using
 maximum mappable suffixes, augmented by several tricks. The main idea behind
 using suffixes is that we can achieve O(m + log(n)) performance by doing a
-backwards search on the FM-index rather than a binary search (which would also
-have incurred massive performance penalties due to cache misses), which is
-O(m log (n)). Instead of using backtracking search, we instead simply skip
+backwards search on the FM-index rather than a binary search, which is
+O(m log (n)) (we could use prefixes by reversing the corpus, but this seems
+immaterial). Instead of using backtracking search, we instead simply skip
 ahead a few nucleotides (with the intention of later using the Needleman-Wunsch
-algorithm (implemented in smw.c) to stitch together these matches.
+algorithm (implemented in smw.c) to stitch together these matches. Under
+reasonable assumptions regarding the number and kind of transcription errors
+we should be able to achieve O(m + log (n)) speed
 
 Summary of files:
 
 Makefile
-A fairly normal makefile with fairly normal compiler options. By default, -O3
-and -fomit-frame-pointer are used. Note that make clean will delete temporary
-files (i.e. ones ending with tildes), but not emacs crash recovery files
-(ones with # on both sides)
+A fairly normal makefile with fairly normal compiler options (for a 64-bit
+system). By default, -O3 and -fomit-frame-pointer are used for performance
+reasons (however, the latter is immiscible with -pg). Note that make clean will
+delete temporary files (i.e. filenames ending with tildes), but not emacs crash
+recovery files (ones with # on both sides)
 
 bwt.c
 Simple implementation of a Burrows-Wheeler transform using qsort() and strcmp()
-(Note that its implementation of suffix array construction does not really give
-the right answer)
+(Note that its implementation of suffix array construction is not really
+correct)
 
 csacak.c
 Ge Nong's implementation of SACA-K, adapted to C from the C++ code (A linear
 time, constant memory suffix array construction algorithm via induced sorting),
-by typedef'ing bool as char
+by typedef'ing bool as char, and changing the indexing into the corpus to use
+the getbase() inline function
 
 fmitest.c
 Implementation of a FM-index and backwards search function, as well as some
@@ -150,7 +152,8 @@ of (char)0, (char)1, (char)2, and (char)3 for the indexed text
 
 histsortcomp.c
 A multithreaded implementation of histogram sort, using a compressed
-respresentation of the genome (2 bits / nucleotide).
+respresentation of the genome (2 bits / nucleotide). Somewhat faster than
+the uncompressed version.
 
 histtest.c
 Testing code for histsort.c
@@ -160,7 +163,7 @@ Testing code for histsortcomp.c
 
 rdtscll.h
 Implementations of rdtscll for 32-bit and 64-bit platforms via #defines and
-inline assembly (for performance testing)
+inline assembly (for performance testing). Currently in 64-bit mode.
 
 rnaseqtest.c
 Testing code for RNA-seq; modeled mostly after searchtest.c, although with
@@ -175,9 +178,12 @@ seqindex.c
 Implementation of a constant time rank index (for the Occ() function lookup)
 Uses O(n) auxiliary memory (to hold partial indices)
 
+seqpt.c
+I/O functions for storing FM-indexes to file and reading them from file
+Note that they are stored as binary files and therefore not really amenable
+to editing (not that there would be much editing possible)
+
 smw.c
 Implementation of a dynamic programming algorithm (currently Needleman-Wunsch,
 which does global alignments; the idea is that we pass it shorter sequences
-so that its O(mn) running time becomes irrelevant)
-
-TODO: Rewrite and test maximal exact match search (where'd it go?)
+so that its O(mn) running time becomes irrelevant) for sequence alignment
