@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
   // Do some fun tests (load up a length 30 sequence (starting from anywhere
   // on the "genome") and backwards search for it on the fm-index (and we're
   // going to fix locate() now too)
-  buf = malloc(12); // The C/C++ standard guarantees that sizeof(char) == 1
+  buf = malloc(16); // The C/C++ standard guarantees that sizeof(char) == 1
   srand(time(0));
   rdtscll(a);
   for (i = 0; i < 1000000; ++i) {

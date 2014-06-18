@@ -3,6 +3,9 @@ Change FM-Index-building code to switch between 4-threaded histsort and SACA-K
 at a certain length
 Fix the length of fmi->idxs (rnaseqtest.c has it right)
 Finish writing RNA-seq (there's some stitching code and a lot of I/O...
+Refactor some more code (I've gotten most of the redundancy out)
+Optimize csuff_arr() for larger array sizes; I suspect that threading
+at a lower level will help cache locality
 
 Things to consider:
 LF(x) is a fairly inexpensive function (although often resulting in cache

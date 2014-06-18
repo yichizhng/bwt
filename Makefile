@@ -16,9 +16,10 @@ CFLAGS = -pthread -std=gnu99 -O3 -m64 -fomit-frame-pointer
 # between unsigned and signed ints (intended and correct behavior),
 # values possibly being used uninitialized (they aren't), argc being
 # ignored (it is, but the program will segfault quickly with wrong arguments),
-# passing pointer targets with different signedness (that's a bug, although one
-# I haven't gotten around to caring about), and some questioning of my knowledge
-# of operator precedence (unwarranted)
+# unused variables (true enough, but harmless), passing pointer targets with
+# different signedness (that's a bug, although one I haven't gotten around to
+# caring about), and some questioning of my knowledge of operator precedence
+# (unwarranted)
 
 all: bwt histtest histcomptest fmitest searchtest rnaseqtest filetest
 
@@ -47,6 +48,6 @@ bwt: bwt.o
 	gcc -o $@ $^ $(CFLAGS)
 
 clean:
-	rm -f *.o histtest bwt histcomptest fmitest searchtest rnaseqtest smw *~
+	rm -f *.o histtest bwt histcomptest fmitest searchtest rnaseqtest smw filetest *~
 
 .PHONY: clean all
