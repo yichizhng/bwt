@@ -137,14 +137,14 @@ unsigned char * lookup_table() {
 }
 
 void destroy_fmi (fm_index *fmi) {
-	int i;
-	free(fmi->bwt);
-	free(fmi->idxs);
-	for (i = 0; i <= (fmi->len+15)/16; ++i)
-		free(fmi->rank_index[i]);
-	free(fmi->rank_index);
-	free(fmi->lookup);
-	free(fmi);
+  int i;
+  free(fmi->bwt);
+  free(fmi->idxs);
+  for (i = 0; i <= (fmi->len+15)/16; ++i)
+    free(fmi->rank_index[i]);
+  free(fmi->rank_index);
+  free(fmi->lookup);
+  free(fmi);
 }
 
 // Comment: rather memory intensive
@@ -240,4 +240,36 @@ int locate(const fm_index *fmi, const char *pattern, int len) {
   if (end - start != 1)
     printf("Warning: multiple matches found (returned first)\n");
   return unc_sa(fmi, start);
+}
+
+// Runs in O(m) time
+void loc_search(const fm_index *fmi, const char *pattern, int len,
+	int *sp, int *ep) {
+	// Searches for a pattern in fmi and returns the start and
+	// end indices. This is to be used for seed searches (as such
+	// it would be called with len=14 instead of, say, 100 (the latter
+	// puts unrealistic demands on read accuracy)), which gives us some
+	// seeds which we can extend (e.g. via one of the dynamic algorithms)
+	// The advantage of this over backtracking search (e.g. Bowtie) is
+	// that backtracking takes O(|p|^(1+e)) which is very painful
+	// (if at least somewhat feasible for small |p|? we can use it for
+	// micro-exons if that comes up)
+
+	// This function is implemented essentially identically to the
+	// previous, it just stores start and end into pointers (this
+	// being better than, say, returning a struct).
+	int start, end, i;
+	start = fmi->C[pattern[len-1]];
+	end = fmi->C[pattern[len-1]+1];
+	for (i = len-2; i >= 0; --i) {
+		if (end <= start) {
+			break;
+		}
+		start = fmi->C[pattern[i]] + 
+			rank(fmi, pattern[i], start);
+		end = fmi->C[pattern[i]] +
+			rank(fmi, pattern[i], end);
+	}
+	*sp = start;
+	*ep = end;
 }

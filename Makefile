@@ -20,16 +20,16 @@ CFLAGS = -pthread -std=gnu99 -O3 -m64 -fomit-frame-pointer
 # I haven't gotten around to caring about), and some questioning of my knowledge
 # of operator precedence (unwarranted)
 
-all: bwt histtest histcomptest fmitest searchtest rnaseqtest
-
-%.o: %.c
-	$(CC) -c -o $@ $< $(CFLAGS)
+all: bwt histtest histcomptest fmitest searchtest rnaseqtest filetest
 
 rnaseqtest: rnaseqtest.o histsortcomp.o seqindex.o csacak.o smw.o
 	gcc -o $@ $^ $(CFLAGS)
 
 #smw: smw.o
 #	gcc -o $@ $^ $(CFLAGS)
+
+filetest: filetest.o histsortcomp.o seqindex.o csacak.o fileio.o
+	gcc -o $@ $^ $(CFLAGS)
 
 searchtest: searchtest.o histsortcomp.o seqindex.o csacak.o
 	gcc -o $@ $^ $(CFLAGS)

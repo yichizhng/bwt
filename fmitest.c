@@ -25,37 +25,6 @@ static inline unsigned char getbase(const char *str, int idx) {
   return ((str[idx>>2])>>(2*(3-(idx&3)))) & 3;
 }
 
-void loc_search(const fm_index *fmi, const char *pattern, int len,
-		int *sp, int *ep) {
-  // Searches for a pattern in fmi and returns the start and
-  // end indices. This is to be used for seed searches (as such
-  // it would be called with len=14 instead of, say, 100 (the latter
-  // puts unrealistic demands on read accuracy)), which gives us some
-  // seeds which we can extend (e.g. via one of the dynamic algorithms)
-  // The advantage of this over backtracking search (e.g. Bowtie) is
-  // that backtracking takes O(|p|^(1+e)) which is very painful
-  // (if at least somewhat feasible for small |p|? we can use it for
-  // micro-exons if that comes up)
-  
-  // This function is implemented essentially identically to the
-  // previous, it just stores start and end into pointers (this
-  // being better than, say, returning a struct).
-  int start, end, i;
-  start = fmi->C[pattern[len-1]]+1;
-  end = fmi->C[pattern[len-1]+1];
-  for (i = len-2; i >= 0; --i) {
-    if (end <= start) {
-      break;
-    }
-    start = fmi->C[pattern[i]] + 
-      rank(fmi, pattern[i], start-1)+1;
-    end = fmi->C[pattern[i]] +
-      rank(fmi, pattern[i], end);
-  }
-  *sp = start;
-  *ep = end;
-}
-
 // Note that this is single-threaded; we parallelize by calling it
 // on different threads. Since it doesn't modify the index the only
 // thing we have to worry about is cache locality (which is a real concern,
@@ -196,24 +165,4 @@ int main(int argc, char **argv) {
   // which is kind of bad but yeah
   free(str);
   free(pats);
-  /* Correctness verification code
-     int x;
-     char *str, *pat;
-     fm_index *fmi;	
-     str = malloc(14 * sizeof(char));
-     pat = malloc(4 * sizeof(char));
-     pat[0] = 1;
-     pat[1] = 0;
-     pat[2] = 1;
-     strcpy(str, ";;;;;I@7456;;");
-     // String is 0323102110000313031003110312
-     // BWT is 2101013010$133123331031020000
-     // 8 18 4 23
-     fmi = make_fmi(str, 52);
-     x = reverse_search(fmi, pat, 2); // Search for "03" (AT) over str
-     printf("%d matches\n", x);
-     destroy_fmi(fmi);
-     free(str);
-     free(pat);
-     return 0; */
 }

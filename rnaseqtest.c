@@ -25,25 +25,6 @@ int log_4(int x) {
   return ((blah.i >> 24) - 63);
 }
 
-// Runs in O(m) time
-void loc_search(const fm_index *fmi, const char *pattern, int len,
-		int *sp, int *ep) {
-  int start, end, i;
-  start = fmi->C[pattern[len-1]];
-  end = fmi->C[pattern[len-1]+1];
-  for (i = len-2; i >= 0; --i) {
-    if (end <= start) {
-      break;
-    }
-    start = fmi->C[pattern[i]] + 
-      rank(fmi, pattern[i], start);
-    end = fmi->C[pattern[i]] +
-      rank(fmi, pattern[i], end);
-  }
-  *sp = start;
-  *ep = end;
-}
-
 // GCC suggests that static inline functions are as fast as macros
 // 
 static inline int fnw_acc(int *values, int i, int j, int width) {

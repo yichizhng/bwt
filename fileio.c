@@ -21,21 +21,43 @@ fm_index *read_index(const char *seq, FILE *f) {
   // Reads the BWT from file and reconstructs the FM-index
   // Returns a newly allocated FM-index.
   // Doesn't check for running out of memory, run at your own risk
+  // Returns null if the file was invalid and leaks memory too
+  int sz;
+  int err = 0;
+
   fm_index *fmi = malloc(sizeof(fm_index));
-  fread(&fmi->len, sizeof(int), 1, f);
-  fread(fmi->C, 5, sizeof(int), f);
-  fread(&fmi->endloc, sizeof(int), 1, f);
+  sz = fread(&fmi->len, sizeof(int), 1, f);
+  if (sz != 1) {
+    fprintf(stderr, "Error reading index from file\n");
+    err = 1;
+  }
+  sz = fread(fmi->C, sizeof(int), 5, f);
+  if (sz != 5) {
+    fprintf(stderr, "Error reading index from file\n");
+    err = 1;
+  }
+  sz = fread(&fmi->endloc, sizeof(int), 1, f);
+  if (sz != 1) {
+    fprintf(stderr, "Error reading index from file\n");
+    err = 1;
+  }
   fmi->idxs = malloc((fmi->len+1)/32 * sizeof(int));
-  fread(fmi->idxs, sizeof(int), (fmi->len+1)/32, f);
+  sz = fread(fmi->idxs, sizeof(int), (fmi->len+1)/32, f);
+  if (sz != (fmi->len+1)/32) {
+    fprintf(stderr, "Error reading index from file\n");
+    err = 1;
+  }
   fmi->bwt = malloc((fmi->len+3)/4);
-  fread(fmi->bwt, 1, (fmi->len+3)/4, f);
+  sz = fread(fmi->bwt, 1, (fmi->len+3)/4, f);
+  if (sz != (fmi->len+3)/4) {
+    fprintf(stderr, "Error reading index from file\n");
+    err = 1;
+  }
+
+  if (err)
+    return NULL; // Yeah, yeah, memory leaks.
   
   fmi->lookup = lookup_table();
   fmi->rank_index = seq_index(fmi->bwt, fmi->len, 16, fmi->lookup);
   return fmi;
-}
-
-int main(void) {
-  printf("Hello, world!");
-  return 0;
 }

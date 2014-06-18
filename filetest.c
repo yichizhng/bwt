@@ -6,14 +6,17 @@
 #include "histsortcomp.h"
 #include "seqindex.h"
 #include "csacak.h"
+#include "fileio.h"
 
 static inline unsigned char getbase(const char *str, int idx) {
 	// Gets the base at the appropriate index
 	return ((str[idx>>2])>>(2*(3-(idx&3)))) & 3;
 }
 
-// A sort of real-life test to see how effective we are at actually searching
-// patterns over a sequence
+// Regression test for the file I/O functionality
+
+// Writes an index to file, then reads it back and tries aligning reads
+// against it
 
 int main(int argc, char **argv) {
   // We take our input filename from argv
@@ -69,6 +72,19 @@ int main(int argc, char **argv) {
   fclose(fp);
   // Now that we've loaded the sequence (ish) we can build an fm-index on it
   fmi = make_fmi(seq, len);
+
+  // Write the index to a (temporary) file
+  FILE *f = tmpfile();
+  write_index(fmi, f);
+  rewind(f);
+  destroy_fmi(fmi);
+  fmi = read_index(seq, f);
+  fclose(f);
+  if (fmi == NULL) {
+    fprintf(stderr, "Error reading from file\n");
+    exit(-1);
+  }
+
   // Do some fun tests (load up a length 30 sequence (starting from anywhere
   // on the "genome") and backwards search for it on the fm-index (and we're
   // going to fix locate() now too)

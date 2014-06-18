@@ -1,0 +1,11 @@
+*~
+*.o
+gmon.out
+bwt
+filetest
+fmitest
+gen_seq
+histcomptest
+histtest
+rnaseqtest
+searchtest
