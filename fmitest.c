@@ -118,6 +118,11 @@ int main(int argc, char **argv) {
   char *str, *pats;
   fm_index *fmi;
   unsigned long long a, b;
+  if (argc != 2) {
+    fprintf(stderr, "Usage: fmitest len\n");
+    exit(-1);
+  }
+
   len = atoi(argv[1]);
   str = malloc(len/4 + 1);
   for (i = 0; i < len/4 + 1; ++i)

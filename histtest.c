@@ -36,8 +36,10 @@ int main(int argc, char **argv) {
   int i;
   unsigned long long a, b;
   unsigned int *SA;
-  if (argc == 1)
-    return 0; // Not putting up with that crap
+  if (argc != 2) {
+    fprintf(stderr, "Usage: histtest len\n");
+    return -1; // Not putting up with that crap
+  }
   len = atoi(argv[1]);
   str = malloc((len+1) * sizeof(char));
   arr = malloc((len+1) * sizeof(char *));
