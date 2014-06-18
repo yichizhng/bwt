@@ -92,16 +92,26 @@ int main(int argc, char **argv) {
     // are no longer looking for an exact match on one part of the genome)
     // for the string
     //jj = locate(fmi, buf, 30);
-    int start, end;
+    int start, end, start2, end2;
     int nmatched = mms(fmi, buf, 30, &start, &end);
+    int nmatched2 = mms(fmi, buf, 30-nmatched, &start2, &end2);
     for (int kk = start; kk < end; ++kk) {
-      printf("%d %d %d\n", unc_sa(fmi, kk), j, jj);
+      printf("%d %d\n", unc_sa(fmi, kk), jj);
       printf("%d bases matched\n", nmatched);
       for (int iii = (30 - nmatched); iii < 30; ++iii)
 	putchar("ACGT"[buf[iii]]);
       putchar('\n');
       printseq(seq, unc_sa(fmi, kk), nmatched);
     }
+    for (int kk = start2; kk < end2; ++kk) {
+      printf("%d %d\n", unc_sa(fmi, kk), j);
+      printf("%d bases matched\n", nmatched2);
+      for (int iii = 0; iii < nmatched2; ++iii)
+	putchar("ACGT"[buf[iii]]);
+      putchar('\n');
+      printseq(seq, unc_sa(fmi, kk), nmatched2);
+    }
+    putchar('\n');
   }
   //rdtscll(b);
   destroy_fmi(fmi);

@@ -290,7 +290,13 @@ int mms(const fm_index *fmi, const char *pattern, int len, int *sp, int *ep) {
     start = fmi->C[pattern[i]] + rank(fmi, pattern[i], start);
     end = fmi->C[pattern[i]] + rank(fmi, pattern[i], end);
   }
-  return len - i - 2;
+  if (end <= start) // Didn't finish matching
+    return len - i - 2;
+  else { // Finished matching
+    *sp = start;
+    *ep = end;
+    return len - i - 1;
+  }
 }
 
 // Prints part of a compressed sequence in more human readable format
