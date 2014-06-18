@@ -33,4 +33,6 @@ int locate(const fm_index *fmi, const char *pattern, int len);
 
 void loc_search(const fm_index *fmi, const char *pattern, int len, int *sp, int *ep);
 
+int mms(const fm_index *fmi, const char *pattern, int len, int *sp, int *ep);
+
 #endif /* _SEQINDXE_H */

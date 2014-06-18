@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -pthread -std=gnu99 -Ofast -m64
+CFLAGS = -pthread -std=gnu99 -O3 -m64
 
 # Requirements: Some sort of reasonable x86 or x86-64 system (for the former,
 # compile with -m32 and edit rdtscll.h to use the 32-bit version), some sort
@@ -21,13 +21,16 @@ CFLAGS = -pthread -std=gnu99 -Ofast -m64
 # caring about), and some questioning of my knowledge of operator precedence
 # (unwarranted)
 
-all: bwt histtest histcomptest fmitest searchtest rnaseqtest filetest
+all: bwt histtest histcomptest fmitest searchtest rnaseqtest filetest gaptest
 
 rnaseqtest: rnaseqtest.o histsortcomp.o seqindex.o csacak.o smw.o
 	gcc -o $@ $^ $(CFLAGS)
 
 #smw: smw.o
 #	gcc -o $@ $^ $(CFLAGS)
+
+gaptest: gaptest.o histsortcomp.o seqindex.o csacak.o 
+	gcc -o $@ $^ $(CFLAGS)
 
 filetest: filetest.o histsortcomp.o seqindex.o csacak.o fileio.o
 	gcc -o $@ $^ $(CFLAGS)
@@ -48,6 +51,6 @@ bwt: bwt.o
 	gcc -o $@ $^ $(CFLAGS)
 
 clean:
-	rm -f *.o histtest bwt histcomptest fmitest searchtest rnaseqtest smw filetest *~
+	rm -f *.o histtest bwt histcomptest fmitest searchtest rnaseqtest smw filetest gaptest *~
 
 .PHONY: clean all
