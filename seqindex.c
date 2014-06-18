@@ -290,5 +290,14 @@ int mms(const fm_index *fmi, const char *pattern, int len, int *sp, int *ep) {
     start = fmi->C[pattern[i]] + rank(fmi, pattern[i], start);
     end = fmi->C[pattern[i]] + rank(fmi, pattern[i], end);
   }
-  return len - i;
+  return len - i - 2;
+}
+
+// Prints part of a compressed sequence in more human readable format
+void printseq(const char *seq, int startidx, int len) {
+  const char *nts = "ACGT";
+  for (int i = 0; i < len; ++i) {
+    putchar(nts[getbase(seq, startidx+i)]);
+  }
+  putchar('\n');
 }

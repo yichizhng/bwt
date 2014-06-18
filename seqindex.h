@@ -35,4 +35,6 @@ void loc_search(const fm_index *fmi, const char *pattern, int len, int *sp, int 
 
 int mms(const fm_index *fmi, const char *pattern, int len, int *sp, int *ep);
 
+void printseq(const char *seq, int startidx, int len);
+
 #endif /* _SEQINDXE_H */
