@@ -5,17 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct _fmi {
-  char *bwt; // Burrows-Wheeler transformed string
-  int *idxs; // Partial index (taken from the suffix array) for
-  // reverse BWT
-  int **rank_index;
-  unsigned char* lookup;
-  int endloc; // In particular, idxs[endloc] == 0
-  int C[5]; // Prefix sum of counts of symbols
-  int len;
-} fm_index;
-
 void write_index(const fm_index *fmi, FILE *f) {
   // Writes the FM-index to file... well, the parts that take
   // time to actually generate.

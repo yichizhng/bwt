@@ -6,16 +6,6 @@
 // Implements reading FM-indexes from file and writing them to file
 // Something that I really should have done a while back -.-
 
-typedef struct _fmi {
-  char *bwt;
-  int *idxs;
-  int **rank_index;
-  unsigned char* lookup;
-  int endloc;
-  int C[5];
-  int len;
-} fm_index;
-
 // We really don't need to know how to construct a FM-index to do this
 
 // Return 0 on success, the file error code otherwise
