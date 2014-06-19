@@ -68,10 +68,8 @@ algorithms, and is an improvement on SA-IS; it uses practically constant space
 (to be precise, it's O(log n)) and is essentially linear in runtime, but is
 slower than the multithreaded histogram sort in most practical cases (a highly
 repetitive sequence is the pathological case for histogram sort). SACA-K was
-chosen mainly to minimize memory usage; SA-IS already has one of the smallest
-memory usages (hint: my adaptation of SACA-K included transforming it to allow
-the use of the compressed form, saving a full 75% memory usage (i.e. as compared
-to storing one nucleotide per byte))
+chosen mainly to minimize memory usage; it has constant auxiliary space
+requirement.
 
 Backward search can be done in O(m) time (i.e. constant in sequence length), but
 the locate() function (i.e. associating a particular match with its position

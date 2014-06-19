@@ -17,15 +17,15 @@ void write_index(const fm_index *fmi, FILE *f) {
   return;
 }
 
+// Reads the BWT from file and reconstructs the FM-index
+// Returns a newly allocated FM-index.
+// Doesn't check for running out of memory; expect segfaults if that happens.
+// If it returns NULL, reading from file failed
 fm_index *read_index(const char *seq, FILE *f) {
-  // Reads the BWT from file and reconstructs the FM-index
-  // Returns a newly allocated FM-index.
-  // Doesn't check for running out of memory, run at your own risk
-  // Returns null if the file was invalid and leaks memory too
   int sz;
   int err = 0;
 
-  fm_index *fmi = malloc(sizeof(fm_index));
+  fm_index *fmi = calloc(1, sizeof(fm_index));
   sz = fread(&fmi->len, sizeof(int), 1, f);
   if (sz != 1) {
     fprintf(stderr, "Error reading index from file\n");
@@ -54,8 +54,10 @@ fm_index *read_index(const char *seq, FILE *f) {
     err = 1;
   }
 
-  if (err)
-    return NULL; // Yeah, yeah, memory leaks.
+  if (err) {
+    destroy_fmi(fmi);
+    return NULL;
+  }
   
   fmi->lookup = lookup_table();
   fmi->rank_index = seq_index(fmi->bwt, fmi->len, 16, fmi->lookup);

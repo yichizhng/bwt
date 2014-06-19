@@ -21,13 +21,16 @@ CFLAGS = -pthread -std=gnu99 -O3 -m64
 # caring about), and some questioning of my knowledge of operator precedence
 # (unwarranted)
 
-all: bwt histtest histcomptest fmitest searchtest rnaseqtest filetest gaptest
+all: bwt histtest histcomptest fmitest searchtest rnaseqtest filetest gaptest build_index
 
 rnaseqtest: rnaseqtest.o histsortcomp.o seqindex.o csacak.o smw.o
 	gcc -o $@ $^ $(CFLAGS)
 
 #smw: smw.o
 #	gcc -o $@ $^ $(CFLAGS)
+
+build_index: build_index.c histsortcomp.c csacak.o fileio.o seqindex.o
+	gcc -o $@ $^ $(CFLAGS)
 
 gaptest: gaptest.o histsortcomp.o seqindex.o csacak.o 
 	gcc -o $@ $^ $(CFLAGS)
@@ -51,6 +54,6 @@ bwt: bwt.o
 	gcc -o $@ $^ $(CFLAGS)
 
 clean:
-	rm -f *.o histtest bwt histcomptest fmitest searchtest rnaseqtest smw filetest gaptest *~
+	rm -f *.o histtest bwt histcomptest fmitest searchtest rnaseqtest smw filetest gaptest build_index *~
 
 .PHONY: clean all

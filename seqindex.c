@@ -216,7 +216,7 @@ int unc_sa(const fm_index *fmi, int idx) {
   }
   x = fmi->idxs[idx/32] + i;
   if (x > fmi->len)
-    x = 0; // An edge case
+    x -= fmi->len + 1;
   return x;
 }
 
