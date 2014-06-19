@@ -85,27 +85,27 @@ int main(int argc, char **argv) {
     exit(-1);
   }
 
-  // Do some fun tests (load up a length 30 sequence (starting from anywhere
-  // on the "genome") and backwards search for it on the fm-index (and we're
-  // going to fix locate() now too)
-  buf = malloc(16); // The C/C++ standard guarantees that sizeof(char) == 1
+  int seqlen = 16;
+  // Do some fun tests (load up a length 16 sequence (starting from anywhere
+  // on the "genome") and backwards search for it on the fm-index
+  buf = malloc(seqlen); // The C/C++ standard guarantees that sizeof(char) == 1
   srand(time(0));
   rdtscll(a);
   for (i = 0; i < 1000000; ++i) {
     // Pick some randomish location to start from (i.e. anywhere from 0
     // to len-16)
-    j = rand() % (len-16);
-    for (k = 0; k < 16; ++k) {
+    j = rand() % (len-seqlen);
+    for (k = 0; k < seqlen; ++k) {
       buf[k] = getbase(seq, j+k);
     }
-    jj = locate(fmi, buf, 16);
+    jj = locate(fmi, buf, seqlen);
     if (j != jj && j != -1) {
       printf("Ruh roh ");
       printf("%d %d\n", j, jj); }
   }
   rdtscll(b);
-  fprintf(stderr, "Took %lld cycles to search 1000000 16bp sequences\n",
-	 b-a);
+  fprintf(stderr, "Took %lld cycles to search 1000000 %dbp sequences\n",
+	  b-a, seqlen);
   fprintf(stderr, "(%f seconds), over a genome of length %d\n", 
 	 ((double)(b-a)) / 2500000000, len);
   destroy_fmi(fmi);

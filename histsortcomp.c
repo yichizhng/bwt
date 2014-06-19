@@ -193,7 +193,7 @@ char * makebwt(const char *str, int len) {
 // Make compressed bwt; this is for testing purposes, I need the indices
 // for the FM index building
 int makecbwt(const char *str, int len, char *out) {
-  unsigned int *idxs, i;
+  int *idxs, i;
   idxs = histsort(str, len);
   i = sprintcbwt(str, idxs, len, out);
   free(idxs);
@@ -218,7 +218,7 @@ int saca_makecbwt(const char *str, int len, char *out) {
 // Note that this function will result in massive numbers of cache misses; don't
 // be surprised by this
 unsigned int sprintcbwt(const char *str, unsigned int *idxs, unsigned int len, char *out) {
-  unsigned int i, d;
+  unsigned int i, d = 0xFFFFFFFF;
   char c = 0, u=3;
   for (i=0; i<=len; ++i) {
     if (idxs[i]) {
