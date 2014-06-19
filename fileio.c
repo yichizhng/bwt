@@ -11,7 +11,7 @@ void write_index(const fm_index *fmi, FILE *f) {
   fwrite(&fmi->len, sizeof(int), 1, f);
   fwrite(fmi->C, sizeof(int), 5, f);
   fwrite(&fmi->endloc, sizeof(int), 1, f);
-  fwrite(fmi->idxs, sizeof(int), ((fmi->len+1)/32), f);
+  fwrite(fmi->idxs, sizeof(int), (1+(fmi->len)/32), f);
   fwrite(fmi->bwt, 1, (fmi->len+3)/4, f);
   // C standard guarantees sizeof(char) to be 1
   return;
@@ -41,9 +41,9 @@ fm_index *read_index(const char *seq, FILE *f) {
     fprintf(stderr, "Error reading index from file\n");
     err = 1;
   }
-  fmi->idxs = malloc((fmi->len+1)/32 * sizeof(int));
-  sz = fread(fmi->idxs, sizeof(int), (fmi->len+1)/32, f);
-  if (sz != (fmi->len+1)/32) {
+  fmi->idxs = malloc((1+(fmi->len)/32) * sizeof(int));
+  sz = fread(fmi->idxs, sizeof(int), 1+(fmi->len)/32, f);
+  if (sz != 1 + (fmi->len)/32) {
     fprintf(stderr, "Error reading index from file\n");
     err = 1;
   }

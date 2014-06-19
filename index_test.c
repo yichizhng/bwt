@@ -1,58 +1,59 @@
+// Tries aligning reads against an index read from file
+
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
-#include "rdtscll.h"
+#include <stdlib.h>
 #include "histsortcomp.h"
 #include "seqindex.h"
 #include "csacak.h"
 #include "fileio.h"
+#include "rdtscll.h"
+#include "time.h"
 
 static inline unsigned char getbase(const char *str, int idx) {
 	// Gets the base at the appropriate index
 	return ((str[idx>>2])>>(2*(3-(idx&3)))) & 3;
 }
 
-// Regression test for the file I/O functionality
-
-// Writes an index to file, then reads it back and tries aligning reads
-// against it
-
 int main(int argc, char **argv) {
-  // We take our input filename from argv
-  int len, i, j, k, jj;
-  char *seq, *buf;
-  unsigned char c;
-  long long a, b;
-  fm_index *fmi;
-  FILE *fp;
-  if (argc == 1) {
-    printf("Usage: searchtest seq_file");
+  if (argc != 3) {
+    fprintf(stderr, "Usage: %s seqfile indexfile\n", argv[0]);
     exit(-1);
   }
-  fp = fopen(argv[1], "rb");
-  fseek(fp, 0L, SEEK_END);
-  len = ftell(fp);
-  rewind(fp);
+  char *seq, *seqfile, *indexfile, *buf, c;
+  fm_index *fmi;
+  int len;
+  int i, j, k, jj;
+  FILE *sfp, *ifp;
+  seqfile = argv[1];
+  indexfile = argv[2];
+  sfp = fopen(seqfile, "rb");
+  if (sfp == 0) {
+    fprintf(stderr, "Could not open sequence\n");
+    exit(-1);
+  }
+  fseek(sfp, 0L, SEEK_END);
+  len = ftell(sfp);
+  rewind(sfp);
   seq = malloc(len/4+1);
   for (i = 0; i < len/4 + 1; ++i) {
-    switch(fgetc(fp)) {
+    switch(fgetc(sfp)) {
     case 'C': c = 64; break;
     case 'G': c = 128; break;
     case 'T': c = 192; break;
     default: c = 0;
     }
-    switch(fgetc(fp)) {
+    switch(fgetc(sfp)) {
     case 'C': c ^= 16; break;
     case 'G': c ^= 32; break;
     case 'T': c ^= 48;
     }
-    switch(fgetc(fp)) {
+    switch(fgetc(sfp)) {
     case 'C': c ^= 4; break;
     case 'G': c ^= 8; break;
     case 'T': c ^= 12;
     }
-    switch(fgetc(fp)) {
+    switch(fgetc(sfp)) {
     case 'C': c ^= 1; break;
     case 'G': c ^= 2; break;
     case 'T': c ^= 3;
@@ -62,35 +63,30 @@ int main(int argc, char **argv) {
   // Handle the last character (which is at seq[len/4]
   c = 0;
   for (i = 0; i < len&3; ++i) {
-    switch(fgetc(fp)) {
+    switch(fgetc(sfp)) {
     case 'C': c ^= 64 >> (2 * i); break;
     case 'G': c ^= 128 >> (2 * i); break;
     case 'T': c ^= 192 >> (2 * i);
     }
     seq[len/4] = c;
   }
-  fclose(fp);
-  // Now that we've loaded the sequence (ish) we can build an fm-index on it
-  fmi = make_fmi(seq, len);
-
-  // Write the index to a (temporary) file
-  FILE *f = tmpfile();
-  write_index(fmi, f);
-  rewind(f);
-  destroy_fmi(fmi);
-  fmi = read_index(seq, f);
-  fclose(f);
-  if (fmi == NULL) {
-    fprintf(stderr, "Error reading from file\n");
+  fclose(sfp);
+  
+  // Open index file
+  ifp = fopen(indexfile, "rb");
+  if (ifp == 0) {
+    fprintf(stderr, "Could not open index file");
     exit(-1);
   }
-
-  int seqlen = 16;
-  // Do some fun tests (load up a length 16 sequence (starting from anywhere
-  // on the "genome") and backwards search for it on the fm-index
+  fmi = read_index(seq, ifp);
+  fclose(ifp);
+  // And we're done! Well, okay, we might want to align some sequences.
+  int seqlen = 30;
   buf = malloc(seqlen); // The C/C++ standard guarantees that sizeof(char) == 1
   srand(time(0));
+  long long a, b;
   rdtscll(a);
+  
   for (i = 0; i < 1000000; ++i) {
     // Pick some randomish location to start from (i.e. anywhere from 0
     // to len-16)

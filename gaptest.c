@@ -93,7 +93,9 @@ int main(int argc, char **argv) {
     // for the string
     //jj = locate(fmi, buf, 30);
     int start, end, start2, end2;
+    // Align the end of the sequence
     int nmatched = mms(fmi, buf, 30, &start, &end);
+    // Align the rest of it
     int nmatched2 = mms(fmi, buf, 30-nmatched, &start2, &end2);
     for (int kk = start; kk < end; ++kk) {
       printf("%d %d\n", unc_sa(fmi, kk), jj);

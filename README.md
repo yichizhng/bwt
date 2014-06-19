@@ -1,4 +1,5 @@
 TODO:
+
 Change FM-Index-building code to switch between 4-threaded histsort and SACA-K
 at a certain length
 Fix the length of fmi->idxs (rnaseqtest.c has it right)
@@ -8,11 +9,17 @@ Optimize csuff_arr() for larger array sizes; I suspect that threading
 at a lower level will help cache locality
 
 Things to consider:
+
 LF(x) is a fairly inexpensive function (although often resulting in cache
 misses probably...); how much, on average, does storing the entire SA help
 (basically, we expect 15 calls to LF() on average)?
+As written, the FM-index currently takes up 37.5% of the space of an
+uncompressed chromosome (meaning that it would take up 150% that of
+a compressed one, since we have the 1:4 byte packing). Do we get
+significant advantages by storing more data?
 
 Methods:
+
 The basic idea of most modern alignment tools is to use the FM-index (Full-text
 minute space), which consists of the Burrows-Wheeler transform of the sequence
 along with some information which allows us to do a backward search in linear

@@ -9,3 +9,6 @@ histcomptest
 histtest
 rnaseqtest
 searchtest
+index_test
+gaptest
+build_index

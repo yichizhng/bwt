@@ -21,7 +21,12 @@ CFLAGS = -pthread -std=gnu99 -O3 -m64
 # caring about), and some questioning of my knowledge of operator precedence
 # (unwarranted)
 
-all: bwt histtest histcomptest fmitest searchtest rnaseqtest filetest gaptest build_index
+# TODO: Remove some of the functions from seqindex.c so that it can be
+# used without including histsortcomp and csacak
+
+TESTS =  bwt histtest histcomptest fmitest searchtest rnaseqtest filetest gaptest build_index index_test
+
+all: $(TESTS)
 
 rnaseqtest: rnaseqtest.o histsortcomp.o seqindex.o csacak.o smw.o
 	gcc -o $@ $^ $(CFLAGS)
@@ -29,7 +34,10 @@ rnaseqtest: rnaseqtest.o histsortcomp.o seqindex.o csacak.o smw.o
 #smw: smw.o
 #	gcc -o $@ $^ $(CFLAGS)
 
-build_index: build_index.c histsortcomp.c csacak.o fileio.o seqindex.o
+index_test: index_test.o fileio.o seqindex.o csacak.o histsortcomp.o
+	gcc -o $@ $^ $(CFLAGS)
+
+build_index: build_index.o histsortcomp.o csacak.o fileio.o seqindex.o
 	gcc -o $@ $^ $(CFLAGS)
 
 gaptest: gaptest.o histsortcomp.o seqindex.o csacak.o 
@@ -54,6 +62,6 @@ bwt: bwt.o
 	gcc -o $@ $^ $(CFLAGS)
 
 clean:
-	rm -f *.o histtest bwt histcomptest fmitest searchtest rnaseqtest smw filetest gaptest build_index *~
+	rm -f *.o $(TESTS) *~
 
 .PHONY: clean all
