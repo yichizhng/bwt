@@ -13,6 +13,7 @@
 #include <string.h>
 #include "seqindex.h"
 #include "histsortcomp.h"
+#include "csacak.h"
 
 static inline unsigned char getbase(const char *str, int idx) {
   // Gets the base at the appropriate index
