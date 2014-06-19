@@ -139,13 +139,21 @@ unsigned char * lookup_table() {
 
 void destroy_fmi (fm_index *fmi) {
   int i;
-  free(fmi->bwt);
-  free(fmi->idxs);
-  for (i = 0; i <= (fmi->len+15)/16; ++i)
-    free(fmi->rank_index[i]);
-  free(fmi->rank_index);
-  free(fmi->lookup);
-  free(fmi);
+  if (fmi) {
+    if (fmi->bwt)
+      free(fmi->bwt);
+    if (fmi->idxs)
+      free(fmi->idxs);
+    if (fmi->rank_index) {
+      for (i = 0; i <= (fmi->len+15)/16; ++i)
+	if (fmi->rank_index[i])
+	  free(fmi->rank_index[i]);
+      free(fmi->rank_index);
+    }
+    if (fmi->lookup)
+      free(fmi->lookup);
+    free(fmi);
+  }
 }
 
 // Comment: rather memory intensive
