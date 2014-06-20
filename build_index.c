@@ -25,28 +25,31 @@ int main(int argc, char **argv) {
   
   if (argc < 3) {
     fprintf(stderr, "Usage: %s seqfile indexfile [-c|h]\n", argv[0]);
+    exit(1);
   }
   seqfile = argv[1];
   indexfile = argv[2];
-  /*
+  
   // Parse last argument if present
   if (argc > 3)
     if (argv[3][0] == '-') {
       if (argv[3][1] == 'h')
 	mode = 1;
-      else if (argv[3][0] == 'c')
+      else if (argv[3][1] == 'c')
 	mode = -1;
       else
 	printf("Invalid switch\n");
-	}*/
+    }
   FILE *ifp, *ofp;
   ifp = fopen(seqfile, "rb");
   if (ifp == 0) {
     fprintf(stderr, "Couldn't open index file\n");
+    exit(1);
   }
   ofp = fopen(indexfile, "w"); // wx may be better, but that's a C2011 thing
   if (ofp == 0) {
     fprintf(stderr, "Couldn't write to output file\n");
+    exit(1);
   }
   fseek(ifp, 0L, SEEK_END);
   len = ftell(ifp);
@@ -88,8 +91,17 @@ int main(int argc, char **argv) {
   }
   fclose(ifp);
 
+  printf("Finished reading sequence from file\n");
+
   // Make the fmi
-  fmi = make_fmi(seq, len);
+  if (mode == 1)
+    fmi = make_fmi(seq, len);
+  else if (mode == -1)
+    fmi = make_fmi_sacak(seq, len);
+  else if (len > 500000000)
+    fmi = make_fmi_sacak(seq, len);
+  else
+    fmi = make_fmi(seq, len);
   write_index(fmi, ofp);
   fclose(ofp);
   destroy_fmi(fmi);

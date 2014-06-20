@@ -157,6 +157,7 @@ void destroy_fmi (fm_index *fmi) {
 }
 
 // Comment: rather memory intensive
+// Also doesn't check malloc()'s return status at all so have fun with that
 fm_index *make_fmi(const char *str, int len) {
   int *idxs, i;
   fm_index *fmi;
@@ -167,7 +168,8 @@ fm_index *make_fmi(const char *str, int len) {
   // extreme cases
   // histsort(), on the other hand, is cache-friendly and multithreaded
   // idxs = csuff_arr(str, len);
-  fmi = malloc(sizeof(fm_index));
+  
+  fmi = calloc(1, sizeof(fm_index));
   fmi->idxs = malloc((1 + (len / 32)) * sizeof(int));
   // idxs is probably more properly referred to as "CSA"
   for (i = 0; i < (1+(len / 32)); ++i)

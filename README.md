@@ -16,7 +16,9 @@ misses probably...); how much, on average, does storing the entire SA help
 As written, the FM-index currently takes up 37.5% of the space of an
 uncompressed chromosome (meaning that it would take up 150% that of
 a compressed one, since we have the 1:4 byte packing). Do we get
-significant advantages by storing more data?
+significant advantages by storing more data? (For example, we could try
+storing seq_index, although that one is quite a pain in the ass, considering
+that it's actually an array of pointers)
 
 Methods:
 
