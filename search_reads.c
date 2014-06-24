@@ -97,10 +97,12 @@ int main(int argc, char **argv) {
   }
   // Read one line ("read") and try aligning it
   
+  printf("Beginning alignment\n");
   int nread = 0;
   while (!feof(rfp)) {
     if (! fgets(buf, sizeof(buf), rfp))
       continue;
+    int tot_anchors = 0;
     // fgets() writes the ending newline if present, so we need to remove
     // that
     if (buf[strlen(buf)-1] == '\n')
@@ -113,14 +115,19 @@ int main(int argc, char **argv) {
       if (matched >= 20) {
 	// Got an anchor length of >20
 	// Print out the matches
-	printf("\n%d anchor(s) found with length %d for read %d\n", end - start, matched, nread);
-	for (int j = start; j < end; ++j)
-	  printf("Starting at position %d\n", unc_sa(fmi, j));
+	//printf("\n%d anchor(s) found with length %d for read %d\n", end - start, matched, nread);
+	//for (int j = start; j < end; ++j)
+	//printf("Starting at position %d\n", unc_sa(fmi, j));
 	len -= matched + 1;
+	tot_anchors++;
       }
       else {
-	len -= 1;
+	len -= 1; // this constant (and the one added to matched) should probably
+	// be bigger than 1
       }
+    }
+    if (tot_anchors > 1) {
+      printf("Read %d: multiple (%d) anchors found\n", nread, tot_anchors);
     }
     nread++;
   }
