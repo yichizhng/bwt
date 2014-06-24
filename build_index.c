@@ -9,12 +9,8 @@
 #include "fileio.h"
 
 // Command line switches:
-// -h specifies histogram sort, -c specifies SACA-K
-// If not specified, -h will be used below 500 million nt, -c otherwise.
-// First argument will be used as the filename, second as the output file
-
-// TODO: Implement that switch (should probably be passed as a parameter
-// to make_fmi())
+// Currently disabled pending a patch to bucket sort to avoid O(n) stack
+// depth
 
 int main(int argc, char **argv) {
   int mode = 0, len, i;
@@ -24,12 +20,12 @@ int main(int argc, char **argv) {
   char c;
   
   if (argc < 3) {
-    fprintf(stderr, "Usage: %s seqfile indexfile [-c|h]\n", argv[0]);
+    fprintf(stderr, "Usage: %s seqfile indexfile\n", argv[0]);
     exit(1);
   }
   seqfile = argv[1];
   indexfile = argv[2];
-  
+  /*
   // Parse last argument if present
   if (argc > 3)
     if (argv[3][0] == '-') {
@@ -39,7 +35,7 @@ int main(int argc, char **argv) {
 	mode = -1;
       else
 	printf("Invalid switch\n");
-    }
+	}*/
   FILE *ifp, *ofp;
   ifp = fopen(seqfile, "rb");
   if (ifp == 0) {
@@ -92,7 +88,7 @@ int main(int argc, char **argv) {
   fclose(ifp);
 
   printf("Finished reading sequence from file\n");
-
+  /*
   // Make the fmi
   if (mode == 1)
     fmi = make_fmi(seq, len);
@@ -101,7 +97,8 @@ int main(int argc, char **argv) {
   else if (len > 500000000)
     fmi = make_fmi_sacak(seq, len);
   else
-    fmi = make_fmi(seq, len);
+  fmi = make_fmi(seq, len); */
+  fmi = make_fmi_sacak(seq, len);
   write_index(fmi, ofp);
   fclose(ofp);
   destroy_fmi(fmi);
