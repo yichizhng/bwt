@@ -22,11 +22,15 @@ CFLAGS = -pthread -std=gnu99 -O3 -m64
 # (unwarranted)
 
 # TODO: Remove some of the functions from seqindex.c so that it can be
-# used without including histsortcomp and csacak
+# used without including histsortcomp and csacak; the program which
+# aligns reads should not need to 
 
-TESTS =  bwt histtest histcomptest fmitest searchtest rnaseqtest filetest gaptest build_index index_test
+TESTS =  bwt histtest histcomptest fmitest searchtest rnaseqtest filetest gaptest build_index index_test search_reads
 
 all: $(TESTS)
+
+search_reads: histsortcomp.o seqindex.o csacak.o search_reads.o fileio.o
+	gcc -o $@ $^ $(CFLAGS)
 
 rnaseqtest: rnaseqtest.o histsortcomp.o seqindex.o csacak.o smw.o
 	gcc -o $@ $^ $(CFLAGS)
