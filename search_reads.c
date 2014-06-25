@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Usage: %s seqfile indexfile readfile\n", argv[0]);
     exit(-1);
   }
-  char *seq, *seqfile, *indexfile, *readfile, buf[255], c;
+  char *seq, *seqfile, *indexfile, *readfile, *buf = malloc(256*256), *revbuf = malloc(256*256), c;
   fm_index *fmi;
   int len;
   int i, j, k, jj;
@@ -100,14 +100,18 @@ int main(int argc, char **argv) {
   printf("Beginning alignment\n");
   int nread = 0;
   while (!feof(rfp)) {
-    if (! fgets(buf, sizeof(buf), rfp))
+    if (! fgets(buf, 256*256-1, rfp))
       continue;
-    int tot_anchors = 0;
+    int forward_pos, backward_pos;
+    int forward_match = 0, backward_match = 0;
     // fgets() writes the ending newline if present, so we need to remove
     // that
     if (buf[strlen(buf)-1] == '\n')
       buf[strlen(buf)-1] = 0;
     int len = strlen(buf);
+    for (int k = 0; k < strlen(buf); ++k)
+      revbuf[k] = buf[strlen(buf)-k-1];
+    revbuf[strlen(buf)] = 0;
     while (len > 20 /* Replace with user-specified constant? */) {
       // Try aligning against the end of the read (MMS)
       int start, end;
@@ -118,20 +122,48 @@ int main(int argc, char **argv) {
 	//printf("\n%d anchor(s) found with length %d for read %d\n", end - start, matched, nread);
 	//for (int j = start; j < end; ++j)
 	//printf("Starting at position %d\n", unc_sa(fmi, j));
-	len -= matched + 1;
-	tot_anchors++;
+	forward_match++;
+	len -= matched;
+	forward_pos = unc_sa(fmi, start);
       }
       else {
-	len -= 1; // this constant (and the one added to matched) should probably
-	// be bigger than 1
+	len -= 1; // this constant should probably be bigger than 1 for performance
+		  // reasons
       }
     }
-    if (tot_anchors > 1) {
-      printf("Read %d: multiple (%d) anchors found\n", nread, tot_anchors);
+    len = strlen(revbuf);
+     while (len > 20 /* Replace with user-specified constant? */) {
+      // Try aligning against the end of the read (MMS)
+      int start, end;
+      int matched = mms(fmi, revbuf, len, &start, &end);
+      if (matched >= 20) {
+	// Got an anchor length of >20
+	// Print out the matches
+	//printf("\n%d anchor(s) found with length %d for read %d\n", end - start, matched, nread);
+	//for (int j = start; j < end; ++j)
+	//printf("Starting at position %d\n", unc_sa(fmi, j));
+	backward_match++;
+	len -= matched;
+	backward_pos = unc_sa(fmi, start);
+      }
+      else {
+	len -= 1; // this constant should probably be bigger than 1 for performance
+		  // reasons
+      }
     }
+    if (forward_match && backward_match && (abs(forward_pos - backward_pos) < 10000)) {
+      printf("\nRead %d: Aligned both forward (%d) and backward (%d)\n",
+             nread, forward_match, backward_match);
+      printf("At locations %d and %d respectively\n", forward_pos, backward_pos);
+      printf("%s\n", buf);
+    }
+
     nread++;
   }
+  fclose(rfp);
   
+  free(buf);
+  free(revbuf);
   destroy_fmi(fmi);
   free(seq);
   return 0;

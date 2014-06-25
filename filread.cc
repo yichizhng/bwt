@@ -1,8 +1,6 @@
 // Strips away the stuff I don't feel like reading
-// Replaces N with G so that matches
-// are not done against them (unless you somehow
-// found a nucleotide sequence containing a lot of G's
-// in a row; unlikely)
+// Replaces N with A (I recommend using different letters for the reference
+// genome and the reads if you don't want to waste your time)
 
 // Reminder to self: HG19 is found at
 // http://hgdownload.cse.ucsc.edu/goldenPath/hg19/bigZips/
