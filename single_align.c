@@ -15,6 +15,7 @@
 #include "time.h"
 
 static inline unsigned char getbase(const char *str, int idx) {
+  if (idx<0) idx=0;
 	// Gets the base at the appropriate index
 	return ((str[idx>>2])>>(2*(3-(idx&3)))) & 3;
 }
@@ -155,6 +156,66 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
   return best_align;
 }
 
+int align_read(const fm_index *fmi, const char *seq, const char *pattern, int len, int thresh) {
+  int starts[10], lens[10], nsegments;
+  int penalty;
+  int nmisses = len/10;
+  int olen = len;
+  for (nsegments = 0; nsegments < 10; nsegments++) {
+    if (len < 10)
+      break;
+    int start, end;
+    int seglen = mms(fmi, pattern, len, &start, &end);
+    if (seglen < thresh) {
+      int mlen = mms_mismatch(fmi, seq, pattern, len - seglen, &start, &end, &penalty);
+      if (mlen + seglen > 2 * thresh) {
+	len -= seglen + mlen + 3;
+	starts[nsegments] = start;
+	lens[nsegments] = seglen + mlen;
+	continue;
+      }
+      if (!nmisses--)
+	return 0;
+      len -= 3;
+      nsegments--;
+      if (nsegments > -1) {
+	starts[nsegments] -= 3;
+	lens[nsegments] += 3;
+      }
+      continue;
+    }
+    if ((len - seglen == 0) || ((len - seglen > 10) && end - start == 1)) {
+      starts[nsegments] = start;
+      lens[nsegments] = seglen;
+      len -= seglen + 3;
+      continue;
+    }
+    // Otherwise try continuing the search
+    int mlen = mms_mismatch(fmi, seq, pattern, len - seglen, &start, &end, &penalty);
+    len -= seglen + mlen + 3;
+    starts[nsegments] = start;
+    lens[nsegments] = seglen + mlen;
+  }
+  int totlen = lens[0];
+  if (nsegments == 10)
+    return 0; // Too many segments
+  else {
+    // For each segment check whether it's within 6 nts of the next
+    
+    for (int i = 0; i < nsegments - 1; ++i) {
+      if (abs(unc_sa(fmi, starts[i+1]) + lens[i+1] - unc_sa(fmi, starts[i])) < 7) {
+	totlen += lens[i+1];
+	continue;
+      } 
+      else
+	return 0; // Gapped
+    }
+  }
+  if (3 * totlen > 2 * olen)
+    return unc_sa(fmi, starts[nsegments-1]) - len;
+  return 0;
+}
+
 // Reminder to self: buf length (i.e. maximum read length) is currently
 // hardcoded; change to a larger value (to align longer reads) or make it
 // dynamic
@@ -275,7 +336,24 @@ int main(int argc, char **argv) {
     int aligned = 0;
 
     int score = 0;
-    int thresh = (int) (-1.2 * (1+len)); // Allowing 20% errors
+    int thresh = (int) (-1.2 * (1+len));
+
+    int pos = align_read(fmi, seq, buf, len, 10);
+    if (pos) {
+      naligned++;
+      printf("%d\n", pos - 2);
+    }
+    else {
+      pos = align_read(fmi, seq, revbuf, len, 10);
+      if (pos) {
+	naligned++;
+	printf("%d\n", pos - 2);
+      }
+      else
+	printf("0\n");
+    }
+
+    /*
     while(len) {
       if (score <= thresh) {
 	break;
@@ -358,6 +436,7 @@ int main(int argc, char **argv) {
 	}
       }
     }
+    */
   }
   fclose(rfp);
   fprintf(stderr, "%d of %d reads aligned\n", naligned, nread);
