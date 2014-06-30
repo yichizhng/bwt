@@ -239,8 +239,8 @@ int main(int argc, char **argv) {
   while (!feof(rfp)) {
     // Align the read using mms and mms_mismatch (which is a sort of wrapper
     // for the correct calls to mms_continue)
-    if (! fgets(buf, 256*256-1, rfp))
-      continue;
+    if (!fgets(buf, 256*256-1, rfp))
+      break;
     nread++;
     if (buf[strlen(buf)-1] == '\n')
       buf[strlen(buf)-1] = 0;
@@ -316,11 +316,11 @@ int main(int argc, char **argv) {
     }
 
     if (!aligned) {
-      // Try aligning as a reversed antisense strand
+      // Try aligning as a reverse complement
       int score = 0;
       while(len) {
 	if (score <= thresh) {
-	  printf("%d 0\n", nread);
+	  printf("0\n");
 	  break;
 	}
 	int start, end;
@@ -352,7 +352,7 @@ int main(int argc, char **argv) {
 	}
 	else {
 	  // we're good
-	  printf("%d %d\n", nread, unc_sa(fmi, start) + 1);
+	  printf("%d\n", unc_sa(fmi, start) + 1);
 	  naligned++;
 	  break;
 	}
