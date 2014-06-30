@@ -156,6 +156,59 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
   return best_align;
 }
 
+// Pass in the required anchor length. ONE mismatch will be allowed for the anchor, so pick a big
+// number :)
+int align_read_anchored(const fm_index *fmi, const char *seq, const char *pattern, int len, int anchor_len) {
+  int curpos;
+  int nmisses = len / 10;
+  int olen = len;
+  int start, end;
+  while (nmisses) {
+    int seglen = mms(fmi, pattern, len, &start, &end);
+    int mlen;
+    if (seglen < anchor_len) {
+      mlen = mms_mismatch(fmi, seq, pattern, len-seglen, &start, &end, &curpos);
+      if (seglen + mlen < anchor_len) { // anchor not found
+	if (!nmisses--)
+	  return 0;
+	len -= 3;
+	continue;
+      }
+      curpos = unc_sa(fmi, start);
+      len -= seglen + mlen + 3;
+      break;
+    }
+    else {
+      curpos = unc_sa(fmi, start);
+      len -= seglen + 3;
+      break;
+    }
+  }
+  while (len && nmisses) {
+    if (len < 3)
+      break;
+    int mlen = mms(fmi, pattern, len, &start, &end);
+    int ext = 0;
+    for (int i = start; i < end; ++i) {
+      if (abs (unc_sa(fmi, i) + mlen + 3 - curpos) < 4) {
+	curpos = unc_sa(fmi, i);
+	len -= mlen + 3;
+	ext = 1;
+	break;
+      }
+    }
+    if (!ext) {
+      // extension search failed
+      curpos -= 3;
+      len -= 3;
+      nmisses--;
+    }
+  }
+  if (!nmisses)
+    return 0;
+  return curpos - len;
+}
+
 int align_read(const fm_index *fmi, const char *seq, const char *pattern, int len, int thresh) {
   int starts[10], lens[10], nsegments;
   int penalty;
@@ -338,13 +391,15 @@ int main(int argc, char **argv) {
     int score = 0;
     int thresh = (int) (-1.2 * (1+len));
 
-    int pos = align_read(fmi, seq, buf, len, 10);
+    //    int pos = align_read(fmi, seq, buf, len, 10);
+    int pos = align_read_anchored(fmi, seq, buf, len, 30);
     if (pos) {
       naligned++;
       printf("%d\n", pos - 2);
     }
     else {
-      pos = align_read(fmi, seq, revbuf, len, 10);
+      //      pos = align_read(fmi, seq, revbuf, len, 10);
+      pos = align_read_anchored(fmi, seq, revbuf, len, 30);
       if (pos) {
 	naligned++;
 	printf("%d\n", pos - 2);
