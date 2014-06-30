@@ -48,6 +48,10 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
   //  if (*ep - *sp > 10)
   //    return -1;
   if (len < 2) { // nothing to do, really
+    int loc = unc_sa(fmi, *sp);
+    char sub_c = getbase(seq, loc-1);
+    *sp = fmi->C[sub_c] + rank(fmi, sub_c, *sp);
+    *ep = *sp + 1;
     *penalty = -6;
     return 1;
   }
@@ -271,16 +275,16 @@ int main(int argc, char **argv) {
     int aligned = 0;
 
     int score = 0;
-    int thresh = (int) (-0.6 * (1+len)); // the same one bowtie2 uses
+    int thresh = (int) (-1.2 * (1+len)); // Allowing 20% errors
     while(len) {
       if (score <= thresh) {
 	break;
       }
       int start, end;
       int matched = mms(fmi, buf, len, &start, &end);
-      if (end - start > 10) {
+      if (matched < 10) {
       	len -= 1;
-      	score -= 6;
+      	score -= 3;
       	continue;
       }
       // Try continuing from these results
@@ -299,12 +303,12 @@ int main(int argc, char **argv) {
       }
       if (tscore <= thresh) {
 	len -= 1;
-	score -= 6;
+	score -= 3;
 	continue;
       }
       else {
 	// we're good
-	printf("%d %d\n", nread, unc_sa(fmi, start) + 1);
+	printf("%d\n", unc_sa(fmi, start) + 1);
 	aligned = 1;
 	naligned++;
 	break;
@@ -314,7 +318,6 @@ int main(int argc, char **argv) {
     if (!aligned) {
       // Try aligning as a reversed antisense strand
       int score = 0;
-      int thresh = (int) (-0.6 * (1+len)); // the same one bowtie2 uses
       while(len) {
 	if (score <= thresh) {
 	  printf("%d 0\n", nread);
@@ -323,9 +326,9 @@ int main(int argc, char **argv) {
 	int start, end;
 	int matched = mms(fmi, revbuf, len, &start, &end);
 	//	printf("Matched %d\n", matched);
-	if (end - start > 10) {
+	if (matched < 10) {
 	  len -= 1;
-	  score -= 6;
+	  score -= 3;
 	  continue;
 	}
 	// Try continuing from these results
@@ -344,7 +347,7 @@ int main(int argc, char **argv) {
 	}
 	if (tscore <= thresh) {
 	  len -= 1;
-	  score -= 6;
+	  score -= 3;
 	  continue;
 	}
 	else {
