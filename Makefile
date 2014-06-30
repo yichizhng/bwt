@@ -25,9 +25,12 @@ CFLAGS = -pthread -std=gnu99 -O3 -m64
 # used without including histsortcomp and csacak; the program which
 # aligns reads should not need to 
 
-TESTS =  bwt histtest histcomptest fmitest searchtest rnaseqtest filetest gaptest build_index index_test search_reads
+TESTS =  bwt histtest histcomptest fmitest searchtest rnaseqtest filetest gaptest build_index index_test search_reads single_align
 
 all: $(TESTS)
+
+single_align: histsortcomp.o csacak.o single_align.o fileio.o seqindex.o
+	gcc -o $@ $^ $(CFLAGS)
 
 search_reads: histsortcomp.o seqindex.o csacak.o search_reads.o fileio.o
 	gcc -o $@ $^ $(CFLAGS)
