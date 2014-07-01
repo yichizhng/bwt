@@ -220,17 +220,20 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
       if (len < 3)
 	return curpos - len;
       // Set up matrix for N-W alignment
-      char *buf = malloc(len + 10);
-      for (int i = 0; i < len + 10; ++i)
-	buf[i] = getbase(seq, curpos - i);
+      int buflen = len + len/10;
+      if (buflen > curpos)
+	buflen = curpos;
+      char *buf = malloc(buflen);
+      for (int i = 0; i < buflen; ++i)
+	buf[i] = getbase(seq, curpos - 1 - i);
       char *buf2 = malloc(len);
       for (int i = 0; i < len; ++i)
 	buf2[i] = pattern[len-1-i];
-      int x = nw_fast(buf, len+10, buf2, len);
+      int x = nw_fast(buf, buflen, buf2, len);
       free(buf);
       free(buf2);
       //printf("%d %d\t", x, len);
-      return curpos - x;
+      return curpos - 1 - x;
     }
 
     len -= anchlen;

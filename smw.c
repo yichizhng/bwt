@@ -111,13 +111,26 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2) {
 		     values[(i-1) * (len2 + 1) + j - 2]) == -3) ||
 		   ((values[(i-1) * (len2 + 1) + j - 1] - 
 		   values[(i-1) * (len2 + 1) + j - 2]) == -8)) ? 0 : -5; */
-      int skip = (values[(i-1) * (len2 + 1) + j - 1] ==
-		  values[(i-2) * (len2 + 1) + j - 2]) ? -5 : 0;
+      int skip1 = 0, skip2 = 0;
+      if (i > 1 && j>1) {
+	skip1 = ((values[(i-1) * (len2 + 1) + j - 1] - 2 ==
+		  values[(i-2) * (len2 + 1) + j - 2]) ||
+		 (values[(i-1) * (len2 + 1) + j - 1] + 3 ==
+		  values[(i-1) * (len2 + 1) + j - 2]) ||
+		 (values[(i-1) * (len2 + 1) + j - 1] + 8 ==
+		  values[(i-1) * (len2 + 1) + j - 2])) ? -5 : 0;
+	skip2 = ((values[(i-1) * (len2 + 1) + j - 1] - 2 ==
+		  values[(i-2) * (len2 + 1) + j - 2]) ||
+		 (values[(i-1) * (len2 + 1) + j - 1] + 3 ==
+		  values[(i-2) * (len2 + 1) + j - 1]) ||
+		 (values[(i-1) * (len2 + 1) + j - 1] + 8 ==
+		  values[(i-2) * (len2 + 1) + j - 1])) ? -5 : 0;
+      }
       // Update cell appropriately
       values[i * (len2 + 1) + j] =
 	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?2:-6),
-	    values[i * (len2 + 1) + j - 1] - 3 + skip,
-	    values[(i-1) * (len2 + 1) + j] - 3 + skip);
+	    values[i * (len2 + 1) + j - 1] - 3 + skip1,
+	    values[(i-1) * (len2 + 1) + j] - 3 + skip2);
       if ((j == len2) && values[i * (len2 + 1) + j] > mx) {
 	mx = values[i * (len2 + 1) + j];
 	maxloc = i;
