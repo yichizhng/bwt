@@ -44,7 +44,8 @@ int mms_continue(const fm_index *fmi, const char *pattern, int len, int *sp, int
 }
 
 // Tries continuing a mms search with mismatch; returns upon finding any continuation with at least 6 matching nts
-int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int len, int *sp, int *ep, int *penalty) {
+// Last argument is the difference between the return value and the number of nts on the genome matched (from -3 to 3).
+int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int len, int *sp, int *ep, int *genomeskips) {
   // If there are too many matches, don't even bother
   //  if (*ep - *sp > 10)
   //    return -1;
@@ -53,7 +54,7 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
     char sub_c = getbase(seq, loc-1);
     *sp = fmi->C[sub_c] + rank(fmi, sub_c, *sp);
     *ep = *sp + 1;
-    *penalty = -6;
+    *genomeskips = 0;
     return 1;
   }
   int best_align = 0;
@@ -75,7 +76,7 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
       best_align = sub_align;
       best_pos = sub_idx;
       if (sub_align > 6 || sub_align == len) {
-	*penalty = -6;
+	*genomeskips = 0;
 	break;
       }
 
@@ -88,7 +89,7 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
       if (ins_align > 5 || ins_align == len) {
 	best_align = sub_align;
 	best_pos = sub_idx;
-	*penalty = -8;
+	*genomeskips = 1;
 	break;
       }
 
@@ -100,7 +101,7 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
       if (ins_align > 5 || ins_align == len) {
 	best_align = sub_align;
 	best_pos = sub_idx;
-	*penalty = -11;
+	*genomeskips = 2;
 	break;
       }
 
@@ -111,7 +112,7 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
       if (ins_align > 5 || ins_align == len) {
 	best_align = sub_align;
 	best_pos = sub_idx;
-	*penalty = -14;
+	*genomeskips = 3;
 	break;
       }
     }
@@ -126,7 +127,7 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
       if (del_align > 6 || del_align == len) {
 	best_align = del_align;
 	best_pos = del_idx;
-	*penalty = -8;
+	*genomeskips = -1;
 	break;
       }
 
@@ -136,7 +137,7 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
       if (del_align > 7 || del_align == len) {
 	best_align = del_align;
 	best_pos = del_idx;
-	*penalty = -11;
+	*genomeskips = -2;
 	break;
       }
 
@@ -146,7 +147,7 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
       if (del_align > 8 || del_align == len) {
 	best_align = del_align;
 	best_pos = del_idx;
-	*penalty = -14;
+	*genomeskips = -3;
 	break;
       }
     }
@@ -156,55 +157,111 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
   return best_align;
 }
 
-// Pass in the required anchor length. ONE mismatch will be allowed for the anchor, so pick a big
-// number :)
+// Pass in the required anchor length. No mismatch will be allowed.
 int align_read_anchored(const fm_index *fmi, const char *seq, const char *pattern, int len, int anchor_len) {
-  int curpos;
-  int nmisses = len / 10;
   int olen = len;
-  int start, end;
-  while (nmisses) {
-    int seglen = mms(fmi, pattern, len, &start, &end);
-    int mlen;
-    if (seglen < anchor_len) {
-      mlen = mms_mismatch(fmi, seq, pattern, len-seglen, &start, &end, &curpos);
-      if (seglen + mlen < anchor_len) { // anchor not found
-	if (!nmisses--)
-	  return 0;
+  int nmisses = len/5;
+  // Here we require an anchor to start in the last 20% of the read
+  int curgap = 0;
+  int curpos = -1;
+  int endpos;
+  // Look for an anchor of length at least anchor_len (try 20 or so, or maybe
+  // log_4(fmi->len)+1)
+  while (len && (nmisses > 0)) {
+    int seglen = mms(fmi, pattern, len, &curpos, &endpos);
+    if (seglen < anchor_len || endpos - curpos > 1) {
+      //if (!curgap++)
+      //nmisses--;
+      nmisses--;
+      len -= 3;
+      continue;
+    }
+    else {
+      len -= seglen;
+      nmisses = olen/5;
+      curpos = unc_sa(fmi, curpos);
+      break;
+    }
+  }
+  if (nmisses < 1)
+    return 0;
+  int klen = len;
+  // In the second loop we try to extend our anchor backwards
+  while ((len > nmisses) && (len > 4) && (nmisses > 0)) {
+    for (curgap = 1; curgap < 4; ++curgap) {
+      int start, end;
+      int seglen = mms(fmi, pattern, len-curgap, &start, &end);
+      int matched = 0;
+      for (int i = start; i < end; ++i) {
+	if (abs(unc_sa(fmi, i) + seglen - curpos) <= curgap) {
+	  // TODO: write proper scoring function, the number of misses
+	  // is not going to be curgap
+	  nmisses -= curgap;
+	  matched = 1;
+	  curpos = unc_sa(fmi,start);
+	  len -= seglen + curgap;
+	  curgap = 0;
+	  break;
+	}
+      }
+      if (matched)
+	break;
+      else
+	continue;
+    }
+    if (curgap)
+      nmisses = 0;
+  }
+  if (nmisses < 1) {
+    // Try again, for kicks
+    len = klen;
+    nmisses = klen / 5;
+    while (len && (nmisses > 0)) {
+      int seglen = mms(fmi, pattern, len, &curpos, &endpos);
+      if (seglen < anchor_len || endpos - curpos > 1) {
+	//if (!curgap++)
+	//nmisses--;
+	nmisses--;
 	len -= 3;
 	continue;
       }
-      curpos = unc_sa(fmi, start);
-      len -= seglen + mlen + 3;
-      break;
-    }
-    else {
-      curpos = unc_sa(fmi, start);
-      len -= seglen + 3;
-      break;
-    }
-  }
-  while (len && nmisses) {
-    if (len < 3)
-      break;
-    int mlen = mms(fmi, pattern, len, &start, &end);
-    int ext = 0;
-    for (int i = start; i < end; ++i) {
-      if (abs (unc_sa(fmi, i) + mlen + 3 - curpos) < 4) {
-	curpos = unc_sa(fmi, i);
-	len -= mlen + 3;
-	ext = 1;
+      else {
+	len -= seglen;
+	nmisses = olen/5;
+	curpos = unc_sa(fmi, curpos);
 	break;
       }
     }
-    if (!ext) {
-      // extension search failed
-      curpos -= 3;
-      len -= 3;
-      nmisses--;
+    if (nmisses < 1)
+      return 0;
+    
+    while ((len > nmisses) && (len > 4) && (nmisses > 0)) {
+      for (curgap = 1; curgap < 4; ++curgap) {
+	int start, end;
+	int seglen = mms(fmi, pattern, len-curgap, &start, &end);
+	int matched = 0;
+	for (int i = start; i < end; ++i) {
+	  if (abs(unc_sa(fmi, i) + seglen - curpos) <= curgap) {
+	    // TODO: write proper scoring function, the number of misses
+	    // is not going to be curgap
+	    nmisses -= curgap;
+	    matched = 1;
+	    curpos = unc_sa(fmi,start);
+	    len -= seglen + curgap;
+	    curgap = 0;
+	    break;
+	  }
+	}
+	if (matched)
+	  break;
+	else
+	  continue;
+      }
+      if (curgap)
+	nmisses = 0;
     }
   }
-  if (!nmisses)
+  if (nmisses < 1)
     return 0;
   return curpos - len;
 }
@@ -389,20 +446,20 @@ int main(int argc, char **argv) {
     int aligned = 0;
 
     int score = 0;
-    int thresh = (int) (-1.2 * (1+len));
+    //    int thresh = (int) (-1.2 * (1+len));
 
     //    int pos = align_read(fmi, seq, buf, len, 10);
-    int pos = align_read_anchored(fmi, seq, buf, len, 30);
+    int pos = align_read_anchored(fmi, seq, buf, len, 20);
     if (pos) {
       naligned++;
-      printf("%d\n", pos - 2);
+      printf("%d\n", pos + 1);
     }
     else {
       //      pos = align_read(fmi, seq, revbuf, len, 10);
-      pos = align_read_anchored(fmi, seq, revbuf, len, 30);
+      pos = align_read_anchored(fmi, seq, revbuf, len, 20);
       if (pos) {
 	naligned++;
-	printf("%d\n", pos - 2);
+	printf("%d\n", pos + 1);
       }
       else
 	printf("0\n");
