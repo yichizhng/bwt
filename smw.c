@@ -90,25 +90,42 @@ int *nw_gap_l(const char *pat, int pat_len, const char *gen, int gen_len) {
 // Optimization of needleman-wunsch by using a 1d output array; is faster by a
 // pretty hilarious factor (>40x) due to the lack of another level of
 // indirection and/or cache optimizations and/or lack of malloc() calls
-int *nw_fast(const char *str1, int len1, const char *str2, int len2) {
+int nw_fast(const char *str1, int len1, const char *str2, int len2) {
   int *values, i, j;
+  int mx = -1000000, maxloc = 0;
   values = malloc((len1 + 1) * (len2 + 1) * sizeof(int));
   // "Zero" first row
-  for (j = 0; j <= len2; ++j) {
-    values[j] = -j;
+  values[0] = 0;
+  for (j = 1; j <= len2; ++j) {
+    values[j] = -5-3*j;
   }
   for (i = 1; i <= len1; ++i) {
     // Zero first column
-    values[i * (len2 + 1)] = -i;
-    for (j = 1; j <= len2; ++j) {
+    values[i * (len2 + 1)] = -5-3*i;
+    for (j = 1; j <= len2; ++j) { /*
+      int skip1 = (((values[(i-1) * (len2 + 1) + j - 1] - 
+		     values[(i-2) * (len2 + 1) + j - 1]) == -3) ||
+		   ((values[(i-1) * (len2 + 1) + j - 1] - 
+		     values[(i-2) * (len2 + 1) + j - 1]) == -8)) ? 0 : -5;
+      int skip2 = (((values[(i-1) * (len2 + 1) + j - 1] - 
+		     values[(i-1) * (len2 + 1) + j - 2]) == -3) ||
+		   ((values[(i-1) * (len2 + 1) + j - 1] - 
+		   values[(i-1) * (len2 + 1) + j - 2]) == -8)) ? 0 : -5; */
+      int skip = (values[(i-1) * (len2 + 1) + j - 1] ==
+		  values[(i-2) * (len2 + 1) + j - 2]) ? -5 : 0;
       // Update cell appropriately
       values[i * (len2 + 1) + j] =
-	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?2:-1),
-	    values[i * (len2 + 1) + j - 1] - 1,
-	    values[(i-1) * (len2 + 1) + j] - 1);
+	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?2:-6),
+	    values[i * (len2 + 1) + j - 1] - 3 + skip,
+	    values[(i-1) * (len2 + 1) + j] - 3 + skip);
+      if ((j == len2) && values[i * (len2 + 1) + j] > mx) {
+	mx = values[i * (len2 + 1) + j];
+	maxloc = i;
+      }
     }
   }
-  return values;
+  free(values);
+  return maxloc - 1;
 }
 
 // Note that this implementation takes the full O(m*n) memory; it is possible

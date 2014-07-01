@@ -13,6 +13,7 @@
 #include "fileio.h"
 #include "rdtscll.h"
 #include "time.h"
+#include "smw.h"
 
 static inline unsigned char getbase(const char *str, int idx) {
   if (idx<0) idx=0;
@@ -160,81 +161,36 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
 // Pass in the required anchor length. No mismatch will be allowed.
 int align_read_anchored(const fm_index *fmi, const char *seq, const char *pattern, int len, int anchor_len) {
   int olen = len;
-  int nmisses = len/5;
+  int anchmisses = len/5, nmisses;
   // Here we require an anchor to start in the last 20% of the read
   int curgap = 0;
   int curpos = -1;
   int endpos;
+  int anchlen;
   // Look for an anchor of length at least anchor_len (try 20 or so, or maybe
   // log_4(fmi->len)+1)
-  while (len && (nmisses > 0)) {
-    int seglen = mms(fmi, pattern, len, &curpos, &endpos);
-    if (seglen < anchor_len || endpos - curpos > 1) {
-      //if (!curgap++)
-      //nmisses--;
-      nmisses--;
-      len -= 3;
-      continue;
-    }
-    else {
-      len -= seglen;
-      nmisses = olen/5;
-      curpos = unc_sa(fmi, curpos);
-      break;
-    }
-  }
-  if (nmisses < 1)
-    return 0;
-  int klen = len;
-  // In the second loop we try to extend our anchor backwards
-  while ((len > nmisses) && (len > 4) && (nmisses > 0)) {
-    for (curgap = 1; curgap < 4; ++curgap) {
-      int start, end;
-      int seglen = mms(fmi, pattern, len-curgap, &start, &end);
-      int matched = 0;
-      for (int i = start; i < end; ++i) {
-	if (abs(unc_sa(fmi, i) + seglen - curpos) <= curgap) {
-	  // TODO: write proper scoring function, the number of misses
-	  // is not going to be curgap
-	  nmisses -= curgap;
-	  matched = 1;
-	  curpos = unc_sa(fmi,start);
-	  len -= seglen + curgap;
-	  curgap = 0;
-	  break;
-	}
-      }
-      if (matched)
-	break;
-      else
-	continue;
-    }
-    if (curgap)
-      nmisses = 0;
-  }
-  if (nmisses < 1) {
-    // Try again, for kicks
-    len = klen;
-    nmisses = klen / 5;
-    while (len && (nmisses > 0)) {
+  while (len > anchor_len && anchmisses > 0) {
+    nmisses = 0;
+    while ((len > anchor_len) && (anchmisses > 0)) {
       int seglen = mms(fmi, pattern, len, &curpos, &endpos);
       if (seglen < anchor_len || endpos - curpos > 1) {
-	//if (!curgap++)
-	//nmisses--;
-	nmisses--;
-	len -= 3;
+	anchmisses--;
+	len -= 2;
 	continue;
       }
       else {
 	len -= seglen;
-	nmisses = olen/5;
+	anchlen = seglen;
+	nmisses = anchmisses + len/5;
 	curpos = unc_sa(fmi, curpos);
 	break;
       }
     }
-    if (nmisses < 1)
-      return 0;
     
+    if (nmisses < 1)
+      continue;
+
+    // In the second loop we try to extend our anchor backwards
     while ((len > nmisses) && (len > 4) && (nmisses > 0)) {
       for (curgap = 1; curgap < 4; ++curgap) {
 	int start, end;
@@ -246,7 +202,7 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 	    // is not going to be curgap
 	    nmisses -= curgap;
 	    matched = 1;
-	    curpos = unc_sa(fmi,start);
+	    curpos = unc_sa(fmi, i);
 	    len -= seglen + curgap;
 	    curgap = 0;
 	    break;
@@ -260,10 +216,55 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
       if (curgap)
 	nmisses = 0;
     }
+    if (nmisses > 0) {
+      if (len < 3)
+	return curpos - len;
+      // Set up matrix for N-W alignment
+      char *buf = malloc(len + 10);
+      for (int i = 0; i < len + 10; ++i)
+	buf[i] = getbase(seq, curpos - i);
+      char *buf2 = malloc(len);
+      for (int i = 0; i < len; ++i)
+	buf2[i] = pattern[len-1-i];
+      int x = nw_fast(buf, len+10, buf2, len);
+      free(buf);
+      free(buf2);
+      //printf("%d %d\t", x, len);
+      return curpos - x;
+    }
+
+    len -= anchlen;
+    anchmisses -= anchlen / 10;
   }
-  if (nmisses < 1)
+  if (len > nmisses || nmisses < 1)
     return 0;
-  return curpos - len;
+
+  switch(len) { /*
+  case 0:
+  case 1:
+  case 2:
+    return curpos - len;
+    break; */
+    // Taking the mismatch is always cheaper than opening a gap (8+5 > 6+6)
+  case 3:
+    if ( (pattern[0] != getbase(seq, curpos-3)) &&
+	 (pattern[1] != getbase(seq, curpos-2)) &&
+	 (pattern[2] != getbase(seq, curpos-1))) {
+      if (pattern[0] == getbase(seq, curpos-4) &&
+	  pattern[1] == getbase(seq, curpos-3) &&
+	  pattern[2] == getbase(seq, curpos-2)) {
+	return curpos - len - 1;
+      }
+      else if ((pattern[0] == getbase(seq, curpos-2)) &&
+	       (pattern[1] == getbase(seq, curpos-1)))
+	return curpos - len - 1;
+    }
+    break;
+
+  default:
+    return curpos - len;
+    break;
+  }
 }
 
 int align_read(const fm_index *fmi, const char *seq, const char *pattern, int len, int thresh) {
@@ -449,14 +450,14 @@ int main(int argc, char **argv) {
     //    int thresh = (int) (-1.2 * (1+len));
 
     //    int pos = align_read(fmi, seq, buf, len, 10);
-    int pos = align_read_anchored(fmi, seq, buf, len, 20);
+    int pos = align_read_anchored(fmi, seq, buf, len, 12);
     if (pos) {
       naligned++;
       printf("%d\n", pos + 1);
     }
     else {
       //      pos = align_read(fmi, seq, revbuf, len, 10);
-      pos = align_read_anchored(fmi, seq, revbuf, len, 20);
+      pos = align_read_anchored(fmi, seq, revbuf, len, 12);
       if (pos) {
 	naligned++;
 	printf("%d\n", pos + 1);
