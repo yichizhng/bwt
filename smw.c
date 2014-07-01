@@ -102,29 +102,17 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2) {
   for (i = 1; i <= len1; ++i) {
     // Zero first column
     values[i * (len2 + 1)] = -5-3*i;
-    for (j = 1; j <= len2; ++j) { /*
-      int skip1 = (((values[(i-1) * (len2 + 1) + j - 1] - 
-		     values[(i-2) * (len2 + 1) + j - 1]) == -3) ||
-		   ((values[(i-1) * (len2 + 1) + j - 1] - 
-		     values[(i-2) * (len2 + 1) + j - 1]) == -8)) ? 0 : -5;
-      int skip2 = (((values[(i-1) * (len2 + 1) + j - 1] - 
-		     values[(i-1) * (len2 + 1) + j - 2]) == -3) ||
-		   ((values[(i-1) * (len2 + 1) + j - 1] - 
-		   values[(i-1) * (len2 + 1) + j - 2]) == -8)) ? 0 : -5; */
+    for (j = 1; j <= len2; ++j) {
       int skip1 = 0, skip2 = 0;
-      if (i > 1 && j>1) {
-	skip1 = ((values[(i-1) * (len2 + 1) + j - 1] - 2 ==
-		  values[(i-2) * (len2 + 1) + j - 2]) ||
-		 (values[(i-1) * (len2 + 1) + j - 1] + 3 ==
+      if (i > 1 && j > 1) {
+	skip2 = ((values[(i-1) * (len2 + 1) + j - 1] + 3 ==
 		  values[(i-1) * (len2 + 1) + j - 2]) ||
 		 (values[(i-1) * (len2 + 1) + j - 1] + 8 ==
-		  values[(i-1) * (len2 + 1) + j - 2])) ? -5 : 0;
-	skip2 = ((values[(i-1) * (len2 + 1) + j - 1] - 2 ==
-		  values[(i-2) * (len2 + 1) + j - 2]) ||
-		 (values[(i-1) * (len2 + 1) + j - 1] + 3 ==
+		  values[(i-1) * (len2 + 1) + j - 2])) ? 0 : -5;
+	skip1 = ((values[(i-1) * (len2 + 1) + j - 1] + 3 ==
 		  values[(i-2) * (len2 + 1) + j - 1]) ||
 		 (values[(i-1) * (len2 + 1) + j - 1] + 8 ==
-		  values[(i-2) * (len2 + 1) + j - 1])) ? -5 : 0;
+		  values[(i-2) * (len2 + 1) + j - 1])) ? 0 : -5;
       }
       // Update cell appropriately
       values[i * (len2 + 1) + j] =

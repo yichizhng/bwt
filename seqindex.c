@@ -321,8 +321,20 @@ int mms(const fm_index *fmi, const char *pattern, int len, int *sp, int *ep) {
     }
     *sp = start;
     *ep = end;
-    start = fmi->C[pattern[i]] + rank(fmi, pattern[i], start);
-    end = fmi->C[pattern[i]] + rank(fmi, pattern[i], end);
+    char c = pattern[i];
+    if (c == 5) {
+      // Assume it's the "most likely" one
+      int max = 0;
+      for (char d = 0; d < 5; ++d) {
+	int count = rank(fmi, d, end) - rank(fmi, d, start);
+	if (count > max) {
+	  max = count;
+	  c = d;
+	}
+      }
+    }
+    start = fmi->C[c] + rank(fmi, c, start);
+    end = fmi->C[c] + rank(fmi, c, end);
   }
   if (end <= start) // Didn't finish matching
     return len - i - 2;

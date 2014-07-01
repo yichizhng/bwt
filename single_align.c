@@ -161,7 +161,7 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
 // Pass in the required anchor length. No mismatch will be allowed.
 int align_read_anchored(const fm_index *fmi, const char *seq, const char *pattern, int len, int anchor_len) {
   int olen = len;
-  int anchmisses = len/5, nmisses;
+  int anchmisses = len/10, nmisses;
   // Here we require an anchor to start in the last 20% of the read
   int curgap = 0;
   int curpos = -1;
@@ -175,13 +175,13 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
       int seglen = mms(fmi, pattern, len, &curpos, &endpos);
       if (seglen < anchor_len || endpos - curpos > 1) {
 	anchmisses--;
-	len -= 2;
+	len -= 3;
 	continue;
       }
       else {
 	len -= seglen;
 	anchlen = seglen;
-	nmisses = anchmisses + len/5;
+	nmisses = olen/5;
 	curpos = unc_sa(fmi, curpos);
 	break;
       }
@@ -220,7 +220,7 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
       if (len < 3)
 	return curpos - len;
       // Set up matrix for N-W alignment
-      int buflen = len + len/10;
+      int buflen = len + 3 + len/5;
       if (buflen > curpos)
 	buflen = curpos;
       char *buf = malloc(buflen);
@@ -439,11 +439,10 @@ int main(int argc, char **argv) {
 	buf[i] = 2;
 	revbuf[len-i-1] = 1;
 	break;
-      default:
-	buf[i] = 2;
-	revbuf[len-i-1] = 2;
+      default: // 'N'
+	buf[i] = 5;
+	revbuf[len-i-1] = 5;
 	break;
-	// TODO: handle 'N' correctly
       }
     }
 
