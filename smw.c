@@ -90,6 +90,9 @@ int *nw_gap_l(const char *pat, int pat_len, const char *gen, int gen_len) {
 // Optimization of needleman-wunsch by using a 1d output array; is faster by a
 // pretty hilarious factor (>40x) due to the lack of another level of
 // indirection and/or cache optimizations and/or lack of malloc() calls
+
+// Returns the position on str2 that the last character of str2 was aligned
+// to
 int nw_fast(const char *str1, int len1, const char *str2, int len2) {
   int *values, i, j;
   int mx = -1000000, maxloc = 0;
@@ -127,6 +130,13 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2) {
   }
   free(values);
   return maxloc - 1;
+}
+
+// The same thing, except this time we always backtrack from the end of both
+// strings (so obviously we don't need to return the position on str2 that
+// we aligned to), outputting to the stack
+void sw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
+  
 }
 
 // Note that this implementation takes the full O(m*n) memory; it is possible
