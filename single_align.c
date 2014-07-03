@@ -222,6 +222,24 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 	    // is not going to be curgap.
 	    nmisses -= curgap;
 	    matched = 1;
+	    
+	    // Align the stuff in between. In this case we don't need to
+	    // copy pattern to a new buffer, but we do still need to copy
+	    // the genome
+	    int buflen = curpos - (unc_sa(fmi, i) + seglen);
+	    // There's a semi-theoretical problem that this might actually
+	    // be negative, but that's easy to resolve
+	    if (buflen < 0) {
+	      stack_push(s, 'I', -buflen);
+	    }
+	    else {
+	      char *buf = malloc(curpos - (unc_sa(fmi, i) + seglen));
+	      for (int i = 0; i < buflen; ++i)
+		buf[i] = getbase(seq, unc_sa(fmi, i) + seglen + i);
+	      // And compare
+	      sw_fast(pattern + (len - curgap), curgap, buf, buflen, s);
+	      free(buf);
+	    }
 	    curpos = unc_sa(fmi, i);
 	    len -= seglen + curgap;
 	    curgap = 0;
