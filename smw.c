@@ -127,6 +127,12 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
 	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?2:-6),
 	    values[i * (len2 + 1) + j - 1] - 3 + skip1,
 	    values[(i-1) * (len2 + 1) + j] - 3 + skip2);
+      if (values[i * (len2 + 1) + j] == values[i * (len2 + 1) + j - 1] - 3 + skip1)
+	pointers[i * (len2 + 1) + j] = 1; // skip on 1
+      else if (values[i * (len2 + 1) + j] == values[(i-1) * (len2 + 1) + j] - 3 + skip2)
+	pointers[i * (len2 + 1) + j] = 2; // skip on 2
+      else
+	pointers[i * (len2 + 1) + j] = 0; // no skip
       if ((j == len2) && values[i * (len2 + 1) + j] > mx) {
 	mx = values[i * (len2 + 1) + j];
 	maxloc = i;

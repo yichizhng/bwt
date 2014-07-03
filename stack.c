@@ -8,12 +8,12 @@ stack *stack_make() {
     return 0;
   s->size = 0;
   s->cap = 10;
-  s->counts = malloc(s->size * sizeof(int));
+  s->counts = malloc(s->cap * sizeof(int));
   if (!s->counts) {
     free(s);
     return 0;
   }
-  s->chars = malloc(s->size);
+  s->chars = malloc(s->cap);
   if (!s->chars) {
     free(s->counts);
     free(s);
@@ -49,7 +49,7 @@ void stack_destroy(stack *s) {
 void stack_flip(stack *s1, stack *s2) {
   while (s1->size) {
     s1->size--;
-    stack_push(s2, s1->counts[s1->size], s2->chars[s1->size]);
+    stack_push(s2, s1->counts[s1->size], s1->chars[s1->size]);
   }
   free(s1->counts);
   free(s1->chars);
@@ -58,7 +58,7 @@ void stack_flip(stack *s1, stack *s2) {
 
 // Pushes some number of somethings onto the stack
 void stack_push(stack *s, char c, int count) {
-  if (s->chars[s->size-1] == c) {
+  if (s->size  && (s->chars[s->size-1] == c)) {
     s->counts[s->size-1] += count;
     return;
   }

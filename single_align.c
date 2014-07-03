@@ -196,7 +196,7 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 	char *buf2 = malloc(olen - len);
 	for (int i = len; i < olen; ++i)
 	  buf2[i-len] = pattern[i];
-	nw_fast(buf, buflen, buf2, len, s);
+	nw_fast(buf, buflen, buf2, olen-len, s);
 	// We can ignore the return value (we don't really care where the
 	// end of the read ends up; we can calculate that from the CIGAR)
 	free(buf);
