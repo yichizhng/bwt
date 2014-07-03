@@ -24,10 +24,20 @@ stack *stack_make() {
 
 // Destroys the stack and prints its contents (in CIGAR format, which is
 // more or less a RLE)
+void stack_print_destroy(stack *s) {
+  while(s->size) {
+    s->size--;
+    fprintf(stderr, "%d%c", s->counts[s->size], s->chars[s->size]);
+  }
+  free(s->counts);
+  free(s->chars);
+  free(s);
+}
+
+// destroy the stack silently
 void stack_destroy(stack *s) {
   while(s->size) {
     s->size--;
-    printf("%d%c", s->counts[s->size], s->chars[s->size]);
   }
   free(s->counts);
   free(s->chars);
@@ -39,7 +49,7 @@ void stack_destroy(stack *s) {
 void stack_flip(stack *s1, stack *s2) {
   while (s1->size) {
     s1->size--;
-    s2->push(s1->counts[s1->size], s2->chars[s1->size]);
+    stack_push(s2, s1->counts[s1->size], s2->chars[s1->size]);
   }
   free(s1->counts);
   free(s1->chars);

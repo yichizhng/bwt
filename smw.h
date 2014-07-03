@@ -7,4 +7,6 @@ int **smw(const char*, int, const char*, int);
 
 int nw_fast(const char *str1, int len1, const char *str2, int len2, stack *s);
 
+void sw_fast(const char *str1, int len1, const char *str2, int len2, stack *s);
+
 #endif /* _SMW_H */

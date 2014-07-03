@@ -29,13 +29,13 @@ TESTS =  bwt histtest histcomptest fmitest searchtest rnaseqtest filetest gaptes
 
 all: $(TESTS)
 
-single_align: histsortcomp.o csacak.o single_align.o fileio.o seqindex.o smw.o
+single_align: histsortcomp.o csacak.o single_align.o fileio.o seqindex.o smw.o stack.o
 	gcc -o $@ $^ $(CFLAGS)
 
 search_reads: histsortcomp.o seqindex.o csacak.o search_reads.o fileio.o
 	gcc -o $@ $^ $(CFLAGS)
 
-rnaseqtest: rnaseqtest.o histsortcomp.o seqindex.o csacak.o smw.o
+rnaseqtest: rnaseqtest.o histsortcomp.o seqindex.o csacak.o smw.o stack.o
 	gcc -o $@ $^ $(CFLAGS)
 
 #smw: smw.o

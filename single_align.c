@@ -14,6 +14,7 @@
 #include "rdtscll.h"
 #include "time.h"
 #include "smw.h"
+#include "stack.h"
 
 static inline unsigned char getbase(const char *str, int idx) {
   if (idx<0) idx=0;
@@ -160,6 +161,7 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
 
 // Pass in the required anchor length. No mismatch will be allowed.
 int align_read_anchored(const fm_index *fmi, const char *seq, const char *pattern, int len, int anchor_len) {
+  stack *s = stack_make();
   int olen = len;
   int anchmisses = len/10, nmisses;
   // Here we require an anchor to start in the last 20% of the read
@@ -183,6 +185,24 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 	anchlen = seglen;
 	nmisses = olen/5;
 	curpos = unc_sa(fmi, curpos);
+
+	// And use N-W to align the "tail" of the read
+	int buflen = 2 * (olen - len);
+	if (buflen > curpos)
+	  buflen = curpos;
+	char *buf = malloc(buflen);
+	for (int i = 0; i < buflen; ++i)
+	  buf[i] = getbase(seq, curpos + seglen + i);
+	char *buf2 = malloc(olen - len);
+	for (int i = len; i < olen; ++i)
+	  buf2[i-len] = pattern[i];
+	nw_fast(buf, buflen, buf2, len, s);
+	// We can ignore the return value (we don't really care where the
+	// end of the read ends up; we can calculate that from the CIGAR)
+	free(buf);
+	free(buf2);
+	// Then push this anchor onto it
+	stack_push(s, 'M', seglen);
 	break;
       }
     }
@@ -199,7 +219,7 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 	for (int i = start; i < end; ++i) {
 	  if (abs(unc_sa(fmi, i) + seglen - curpos) <= curgap) {
 	    // TODO: write proper scoring function, the number of misses
-	    // is not going to be curgap
+	    // is not going to be curgap.
 	    nmisses -= curgap;
 	    matched = 1;
 	    curpos = unc_sa(fmi, i);
@@ -229,7 +249,7 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
       char *buf2 = malloc(len);
       for (int i = 0; i < len; ++i)
 	buf2[i] = pattern[len-1-i];
-      int x = nw_fast(buf, buflen, buf2, len);
+      int x = nw_fast(buf, buflen, buf2, len, s);
       free(buf);
       free(buf2);
       //printf("%d %d\t", x, len);
@@ -238,6 +258,8 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 
     len -= anchlen;
     anchmisses -= anchlen / 10;
+    stack_destroy(s);
+    s = stack_make();
   }
   if (len > nmisses || nmisses < 1)
     return 0;
@@ -265,6 +287,7 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
     break;
 
   default:
+    stack_print_destroy(s);
     return curpos - len;
     break;
   }

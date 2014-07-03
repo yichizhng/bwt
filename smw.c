@@ -101,7 +101,7 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
   int mx = -1000000, maxloc = 0;
   values = malloc((len1 + 1) * (len2 + 1) * sizeof(int));
   char *pointers = malloc((len1 + 1) * (len2 + 1));
-  stack flips = stack_make();
+  stack *flips = stack_make();
   // "Zero" first row
   values[0] = 0;
   for (j = 1; j <= len2; ++j) {
