@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "rdtscll.h"
+#include "stack.h"
 
 static inline int max(int a, int b, int c) {
   return (a > b) ? ((a > c) ? a : c) : ((b > c) ? b : c);
@@ -92,11 +93,15 @@ int *nw_gap_l(const char *pat, int pat_len, const char *gen, int gen_len) {
 // indirection and/or cache optimizations and/or lack of malloc() calls
 
 // Returns the position on str2 that the last character of str2 was aligned
-// to
-int nw_fast(const char *str1, int len1, const char *str2, int len2) {
+// to. Outputs some CIGARs to the given stack. This function can be used
+// to align both the head and tail; the head should be passed in backwards
+// (i.e. str1[0] and str2[0] are the characters that the MMS failed on)
+int nw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
   int *values, i, j;
   int mx = -1000000, maxloc = 0;
   values = malloc((len1 + 1) * (len2 + 1) * sizeof(int));
+  char *pointers = malloc((len1 + 1) * (len2 + 1));
+  stack flips = stack_make();
   // "Zero" first row
   values[0] = 0;
   for (j = 1; j <= len2; ++j) {
@@ -128,6 +133,49 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2) {
       }
     }
   }
+  i = maxloc;
+  j = len2;
+  // In theory something bad might have happened (some insertions on the end)
+  // if str1 wasn't long enough. I'm going to ignore that possibility :)
+  // But it's something to think about implementing
+  while (i && j) {
+    // Figure out which way the correct path goes; we can infer this directly
+    // from the score, in fact, but it's just easier to keep track of that
+    // from a separate pointer array ("pointer"; in this case it's just
+    // storing which way we're going)
+    
+    // Since, as before, str1 refers to the pattern and str2 the genome,
+    // a skip on 1 is to be called a deletion (the base is present on the genome
+    // but not the read) and a skip on 2 an insertion. We do not output
+    // characters other than M, I, and D. Score can be calculated directly
+    // and trivially from the CIGAR if necessary.
+    char dir = pointers[i * (len2 + 1) + j];
+    switch(dir) {
+    case 1:
+      i--;
+      stack_push(flips, 'D', 1);
+      break;
+    case 2:
+      j--;
+      stack_push(flips, 'I', 1);
+      break;
+    default: // 0
+      i--;
+      j--;
+      stack_push(flips, 'M', 1);
+      break;
+    }
+  }
+  while (i) {
+    i--;
+    stack_push(flips, 'D', 1);
+  }
+  while (j) {
+    j--;
+    stack_push(flips, 'I', 1);
+  }
+  stack_flip (flips, s);
+  free(pointers);
   free(values);
   return maxloc - 1;
 }
@@ -135,8 +183,91 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2) {
 // The same thing, except this time we always backtrack from the end of both
 // strings (so obviously we don't need to return the position on str2 that
 // we aligned to), outputting to the stack
+// str1 still refers to the pattern and str2 to the genome, for consistency
 void sw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
-  
+  int *values, i, j;
+  char *pointers;
+  values = malloc((len1 + 1) * (len2 + 1) * sizeof(int));
+  pointers = malloc((len1 + 1) * (len2 + 1));
+  // "Zero" first row
+  values[0] = 0;
+  for (j = 1; j <= len2; ++j) {
+    values[j] = -5-3*j;
+  }
+  for (i = 1; i <= len1; ++i) {
+    // Zero first column
+    values[i * (len2 + 1)] = -5-3*i;
+    for (j = 1; j <= len2; ++j) {
+      int skip1 = 0, skip2 = 0;
+      if (i > 1 && j > 1) {
+	skip2 = ((values[(i-1) * (len2 + 1) + j - 1] + 3 ==
+		  values[(i-1) * (len2 + 1) + j - 2]) ||
+		 (values[(i-1) * (len2 + 1) + j - 1] + 8 ==
+		  values[(i-1) * (len2 + 1) + j - 2])) ? 0 : -5;
+	skip1 = ((values[(i-1) * (len2 + 1) + j - 1] + 3 ==
+		  values[(i-2) * (len2 + 1) + j - 1]) ||
+		 (values[(i-1) * (len2 + 1) + j - 1] + 8 ==
+		  values[(i-2) * (len2 + 1) + j - 1])) ? 0 : -5;
+      }
+      // Update cell appropriately
+      values[i * (len2 + 1) + j] =
+	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?2:-6),
+	    values[i * (len2 + 1) + j - 1] - 3 + skip1,
+	    values[(i-1) * (len2 + 1) + j] - 3 + skip2);
+      if (values[i * (len2 + 1) + j] == values[i * (len2 + 1) + j - 1] - 3 + skip1)
+	pointers[i * (len2 + 1) + j] = 1; // skip on 1
+      else if (values[i * (len2 + 1) + j] == values[(i-1) * (len2 + 1) + j] - 3 + skip2)
+	pointers[i * (len2 + 1) + j] = 2; // skip on 2
+      else
+	pointers[i * (len2 + 1) + j] = 0; // no skip
+    }
+  }
+  // Now we need to iterate back from the end of the match (len1, len2)
+  // and figure out the best (or A best) path. Because these segments are
+  // passed in forward order, we do not need to allocate another stack to
+  // do a flip (we are pushing them to the stack in back to front order, which
+  // is correct)
+  i = len1;
+  j = len2;
+  while (i && j) {
+    // Figure out which way the correct path goes; we can infer this directly
+    // from the score, in fact, but it's just easier to keep track of that
+    // from a separate pointer array ("pointer"; in this case it's just
+    // storing which way we're going)
+    
+    // Since, as before, str1 refers to the pattern and str2 the genome,
+    // a skip on 1 is to be called a deletion (the base is present on the genome
+    // but not the read) and a skip on 2 an insertion. We do not output
+    // characters other than M, I, and D. Score can be calculated directly
+    // and trivially from the CIGAR if necessary.
+    char dir = pointers[i * (len2 + 1) + j];
+    switch(dir) {
+    case 1:
+      i--;
+      stack_push(s, 'D', 1);
+      break;
+    case 2:
+      j--;
+      stack_push(s, 'I', 1);
+      break;
+    default: // 0
+      i--;
+      j--;
+      stack_push(s, 'M', 1);
+      break;
+    }
+  }
+  while (i) {
+    i--;
+    stack_push(s, 'D', 1);
+  }
+  while (j) {
+    j--;
+    stack_push(s, 'I', 1);
+  }
+  free(values);
+  free(pointers);
+  return;
 }
 
 // Note that this implementation takes the full O(m*n) memory; it is possible

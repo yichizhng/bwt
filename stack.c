@@ -34,6 +34,18 @@ void stack_destroy(stack *s) {
   free(s);
 }
 
+// "Flips" stack 1 onto stack 2 (so that the bottom of stack 1 is now on
+// the top of stack 2. Destroys stack 1.
+void stack_flip(stack *s1, stack *s2) {
+  while (s1->size) {
+    s1->size--;
+    s2->push(s1->counts[s1->size], s2->chars[s1->size]);
+  }
+  free(s1->counts);
+  free(s1->chars);
+  free(s1);
+}
+
 // Pushes some number of somethings onto the stack
 void stack_push(stack *s, char c, int count) {
   if (s->chars[s->size-1] == c) {
