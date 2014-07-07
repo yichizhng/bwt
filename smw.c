@@ -152,20 +152,15 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
     // from a separate pointer array ("pointer"; in this case it's just
     // storing which way we're going)
     
-    // Since, as before, str1 refers to the pattern and str2 the genome,
-    // a skip on 1 is to be called a deletion (the base is present on the genome
-    // but not the read) and a skip on 2 an insertion. We do not output
-    // characters other than M, I, and D. Score can be calculated directly
-    // and trivially from the CIGAR if necessary.
     char dir = pointers[i * (len2 + 1) + j];
     switch(dir) {
     case 1:
       i--;
-      stack_push(flips, 'D', 1);
+      stack_push(flips, 'I', 1);
       break;
     case 2:
       j--;
-      stack_push(flips, 'I', 1);
+      stack_push(flips, 'D', 1);
       break;
     default: // 0
       i--;
@@ -176,11 +171,11 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
   }
   while (i) {
     i--;
-    stack_push(flips, 'D', 1);
+    stack_push(flips, 'I', 1);
   }
   while (j) {
     j--;
-    stack_push(flips, 'I', 1);
+    stack_push(flips, 'D', 1);
   }
   stack_flip (flips, s);
   free(pointers);
@@ -246,11 +241,11 @@ void sw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
     switch(dir) {
     case 1:
       i--;
-      stack_push(s, 'D', 1);
+      stack_push(s, 'I', 1);
       break;
     case 2:
       j--;
-      stack_push(s, 'I', 1);
+      stack_push(s, 'D', 1);
       break;
     default: // 0
       i--;
@@ -261,11 +256,11 @@ void sw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
   }
   while (i) {
     i--;
-    stack_push(s, 'D', 1);
+    stack_push(s, 'I', 1);
   }
   while (j) {
     j--;
-    stack_push(s, 'I', 1);
+    stack_push(s, 'D', 1);
   }
   // verify contents of stack
   //for (int k = 0; k < s->size; ++k) {
