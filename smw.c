@@ -92,11 +92,15 @@ int *nw_gap_l(const char *pat, int pat_len, const char *gen, int gen_len) {
 // pretty hilarious factor (>40x) due to the lack of another level of
 // indirection and/or cache optimizations and/or lack of malloc() calls
 
-// Returns the position on str2 that the last character of str2 was aligned
+// Returns the position on str2 that the last character of str1 was aligned
 // to. Outputs some CIGARs to the given stack. This function can be used
 // to align both the head and tail; the head should be passed in backwards
 // (i.e. str1[0] and str2[0] are the characters that the MMS failed on)
 int nw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
+  //  fprintf(stderr, "%d %d\n", len1, len2);
+  if (len1 == 0) { // happens more often than you'd think
+    return 0; // Nothing at all to do
+  }
   int *values, i, j;
   int mx = -1000000, maxloc = 0;
   values = malloc((len1 + 1) * (len2 + 1) * sizeof(int));
@@ -111,7 +115,7 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
     // Zero first column
     values[i * (len2 + 1)] = -5-3*i;
     for (j = 1; j <= len2; ++j) {
-      int skip1 = 0, skip2 = 0;
+      int skip1 = -5, skip2 = -5;
       if (i > 1 && j > 1) {
 	skip2 = ((values[(i-1) * (len2 + 1) + j - 1] + 3 ==
 		  values[(i-1) * (len2 + 1) + j - 2]) ||
@@ -124,23 +128,25 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
       }
       // Update cell appropriately
       values[i * (len2 + 1) + j] =
-	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?2:-6),
-	    values[i * (len2 + 1) + j - 1] - 3 + skip1,
-	    values[(i-1) * (len2 + 1) + j] - 3 + skip2);
+	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?0:-6),
+	    values[i * (len2 + 1) + j - 1] - 3 + skip2,
+	    values[(i-1) * (len2 + 1) + j] - 3 + skip1);
       if (values[i * (len2 + 1) + j] == values[i * (len2 + 1) + j - 1] - 3 + skip1)
-	pointers[i * (len2 + 1) + j] = 1; // skip on 1
-      else if (values[i * (len2 + 1) + j] == values[(i-1) * (len2 + 1) + j] - 3 + skip2)
 	pointers[i * (len2 + 1) + j] = 2; // skip on 2
+      else if (values[i * (len2 + 1) + j] == values[(i-1) * (len2 + 1) + j] - 3 + skip2)
+	pointers[i * (len2 + 1) + j] = 1; // skip on 1
       else
 	pointers[i * (len2 + 1) + j] = 0; // no skip
-      if ((j == len2) && values[i * (len2 + 1) + j] > mx) {
-	mx = values[i * (len2 + 1) + j];
-	maxloc = i;
-      }
     }
   }
-  i = maxloc;
-  j = len2;
+  for (j = 0; j <= len2; ++j) {
+    if (values[len1 * (len2 + 1) + j] > mx) {
+      mx = values[len1 * (len2 + 1) + j];
+      maxloc = j;
+    }
+  }
+  i = len1;
+  j = maxloc;
   // In theory something bad might have happened (some insertions on the end)
   // if str1 wasn't long enough. I'm going to ignore that possibility :)
   // But it's something to think about implementing
@@ -217,13 +223,13 @@ void sw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
       }
       // Update cell appropriately
       values[i * (len2 + 1) + j] =
-	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?2:-6),
-	    values[i * (len2 + 1) + j - 1] - 3 + skip1,
-	    values[(i-1) * (len2 + 1) + j] - 3 + skip2);
+	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?0:-6),
+	    values[i * (len2 + 1) + j - 1] - 3 + skip2,
+	    values[(i-1) * (len2 + 1) + j] - 3 + skip1);
       if (values[i * (len2 + 1) + j] == values[i * (len2 + 1) + j - 1] - 3 + skip1)
-	pointers[i * (len2 + 1) + j] = 1; // skip on 1
-      else if (values[i * (len2 + 1) + j] == values[(i-1) * (len2 + 1) + j] - 3 + skip2)
 	pointers[i * (len2 + 1) + j] = 2; // skip on 2
+      else if (values[i * (len2 + 1) + j] == values[(i-1) * (len2 + 1) + j] - 3 + skip2)
+	pointers[i * (len2 + 1) + j] = 1; // skip on 1
       else
 	pointers[i * (len2 + 1) + j] = 0; // no skip
     }

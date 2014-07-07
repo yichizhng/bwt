@@ -29,6 +29,7 @@ void stack_print_destroy(stack *s) {
     s->size--;
     fprintf(stderr, "%d%c", s->counts[s->size], s->chars[s->size]);
   }
+  fprintf(stderr, "\n");
   free(s->counts);
   free(s->chars);
   free(s);
@@ -49,7 +50,7 @@ void stack_destroy(stack *s) {
 void stack_flip(stack *s1, stack *s2) {
   while (s1->size) {
     s1->size--;
-    stack_push(s2, s1->counts[s1->size], s1->chars[s1->size]);
+    stack_push(s2, s1->chars[s1->size], s1->counts[s1->size]);
   }
   free(s1->counts);
   free(s1->chars);

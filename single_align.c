@@ -162,7 +162,7 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
 // Pass in the required anchor length. No mismatch will be allowed.
 int align_read_anchored(const fm_index *fmi, const char *seq, const char *pattern, int len, int anchor_len) {
   stack *s = stack_make();
-  int olen = len;
+  const int olen = len;
   int anchmisses = len/10, nmisses;
   // Here we require an anchor to start in the last 20% of the read
   int curgap = 0;
@@ -185,22 +185,21 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 	anchlen = seglen;
 	nmisses = olen/5;
 	curpos = unc_sa(fmi, curpos);
+	//fprintf(stderr, "%d %d %d\n", anchlen, olen, len);
 
 	// And use N-W to align the "tail" of the read
-	int buflen = 2 * (olen - len);
+	int buflen = 2 * (olen - (len + seglen));
 	if (buflen + curpos + seglen > fmi->len)
 	  buflen = fmi->len - curpos - seglen;
 	char *buf = malloc(buflen);
 	for (int i = 0; i < buflen; ++i)
 	  buf[i] = getbase(seq, curpos + seglen + i);
-	char *buf2 = malloc(olen - len);
-	for (int i = len; i < olen; ++i)
-	  buf2[i-len] = pattern[i];
-	nw_fast(buf, buflen, buf2, olen-len, s);
+	nw_fast(pattern + len + seglen, olen - (len + seglen),
+		buf, buflen, s);
 	// We can ignore the return value (we don't really care where the
 	// end of the read ends up; we can calculate that from the CIGAR)
 	free(buf);
-	free(buf2);
+		//	free(buf2);
 	// Then push this anchor onto it
 	stack_push(s, 'M', seglen);
 	break;
@@ -233,13 +232,14 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 	      stack_push(s, 'I', -buflen);
 	    }
 	    else {
-	      char *buf = malloc(curpos - (unc_sa(fmi, i) + seglen));
+	      char *buf = malloc(buflen);
 	      for (int j = 0; j < buflen; ++j)
 		buf[j] = getbase(seq, unc_sa(fmi, i) + seglen + j);
 	      // And compare
 	      sw_fast(pattern + (len - curgap), curgap, buf, buflen, s);
 	      free(buf);
 	    }
+	    stack_push(s, 'M', seglen);
 	    curpos = unc_sa(fmi, i);
 	    len -= seglen + curgap;
 	    curgap = 0;
@@ -255,8 +255,6 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 	nmisses = 0;
     }
     if (nmisses > 0) {
-      if (len < 3)
-	return curpos - len;
       // Set up matrix for N-W alignment
       int buflen = len + 3 + len/5;
       if (buflen > curpos)
@@ -267,12 +265,12 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
       char *buf2 = malloc(len);
       for (int i = 0; i < len; ++i)
 	buf2[i] = pattern[len-1-i];
-      int x = nw_fast(buf, buflen, buf2, len, s);
+      int x = nw_fast(buf2, len, buf, buflen, s);
       free(buf);
       free(buf2);
       //printf("%d %d\t", x, len);
-      stack_destroy(s);
-      return curpos - 1 - x;
+      stack_print_destroy(s);
+      return curpos - x;
     }
 
     len -= anchlen;
@@ -283,33 +281,20 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
   if (len > nmisses || nmisses < 1)
     return 0;
 
-  switch(len) { /*
-  case 0:
-  case 1:
-  case 2:
-    return curpos - len;
-    break; */
-    // Taking the mismatch is always cheaper than opening a gap (8+5 > 6+6)
-  case 3:
-    if ( (pattern[0] != getbase(seq, curpos-3)) &&
-	 (pattern[1] != getbase(seq, curpos-2)) &&
-	 (pattern[2] != getbase(seq, curpos-1))) {
-      if (pattern[0] == getbase(seq, curpos-4) &&
-	  pattern[1] == getbase(seq, curpos-3) &&
-	  pattern[2] == getbase(seq, curpos-2)) {
-	return curpos - len - 1;
-      }
-      else if ((pattern[0] == getbase(seq, curpos-2)) &&
-	       (pattern[1] == getbase(seq, curpos-1)))
-	return curpos - len - 1;
-    }
-    break;
-
-  default:
-    stack_print_destroy(s);
-    return curpos - len;
-    break;
-  }
+  int buflen = len + 3 + len/5;
+  if (buflen > curpos)
+    buflen = curpos;
+  char *buf = malloc(buflen);
+  for (int i = 0; i < buflen; ++i)
+    buf[i] = getbase(seq, curpos - 1 - i);
+  char *buf2 = malloc(len);
+  for (int i = 0; i < len; ++i)
+    buf2[i] = pattern[len-1-i];
+  int x = nw_fast(buf2, len, buf, buflen, s);
+  free(buf);
+  free(buf2);
+  stack_print_destroy(s);
+  return curpos - len;
 }
 
 int align_read(const fm_index *fmi, const char *seq, const char *pattern, int len, int thresh) {
