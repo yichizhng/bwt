@@ -215,7 +215,7 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 	int seglen = mms(fmi, pattern, len-curgap, &start, &end);
 	int matched = 0;
 	for (int i = start; i < end; ++i) {
-	  if (abs(unc_sa(fmi, i) + seglen - curpos) <= curgap) {
+	  if (abs(unc_sa(fmi, i) + seglen - curpos) - curgap <= 3) {
 	    // TODO: write proper scoring function, the number of misses
 	    // is not going to be curgap.
 	    nmisses -= curgap;
