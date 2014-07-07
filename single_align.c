@@ -16,7 +16,7 @@
 #include "smw.h"
 #include "stack.h"
 
-static inline unsigned char getbase(const char *str, int idx) {
+unsigned char getbase(const char *str, int idx) {
   if (idx<0) idx=0;
 	// Gets the base at the appropriate index
 	return ((str[idx>>2])>>(2*(3-(idx&3)))) & 3;
@@ -188,8 +188,8 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 
 	// And use N-W to align the "tail" of the read
 	int buflen = 2 * (olen - len);
-	if (buflen > curpos)
-	  buflen = curpos;
+	if (buflen + curpos + seglen > fmi->len)
+	  buflen = fmi->len - curpos - seglen;
 	char *buf = malloc(buflen);
 	for (int i = 0; i < buflen; ++i)
 	  buf[i] = getbase(seq, curpos + seglen + i);
@@ -234,8 +234,8 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 	    }
 	    else {
 	      char *buf = malloc(curpos - (unc_sa(fmi, i) + seglen));
-	      for (int i = 0; i < buflen; ++i)
-		buf[i] = getbase(seq, unc_sa(fmi, i) + seglen + i);
+	      for (int j = 0; j < buflen; ++j)
+		buf[j] = getbase(seq, unc_sa(fmi, i) + seglen + j);
 	      // And compare
 	      sw_fast(pattern + (len - curgap), curgap, buf, buflen, s);
 	      free(buf);
@@ -271,6 +271,7 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
       free(buf);
       free(buf2);
       //printf("%d %d\t", x, len);
+      stack_destroy(s);
       return curpos - 1 - x;
     }
 

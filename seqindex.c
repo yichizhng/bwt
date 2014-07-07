@@ -313,8 +313,8 @@ void loc_search(const fm_index *fmi, const char *pattern, int len,
 // of matches in sp and ep.
 int mms(const fm_index *fmi, const char *pattern, int len, int *sp, int *ep) {
   int start, end, i;
-  start = fmi->C[pattern[len-1]];
-  end = fmi->C[pattern[len-1]+1];
+  *sp = start = fmi->C[pattern[len-1]];
+  *ep = end = fmi->C[pattern[len-1]+1];
   for (i = len-2; i >= 0; --i) {
     if (end <= start) {
       break;
@@ -323,9 +323,9 @@ int mms(const fm_index *fmi, const char *pattern, int len, int *sp, int *ep) {
     *ep = end;
     char c = pattern[i];
     if (c == 5) {
-      // Assume it's the "most likely" one
-      int max = 0;
-      for (char d = 0; d < 5; ++d) {
+      // Assume it's the "most likely" one (the one with most matches)
+      int max = -1;
+      for (char d = 0; d < 4; ++d) {
 	int count = rank(fmi, d, end) - rank(fmi, d, start);
 	if (count > max) {
 	  max = count;
