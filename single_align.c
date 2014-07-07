@@ -187,7 +187,7 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 	//fprintf(stderr, "%d %d %d\n", anchlen, olen, len);
 
 	// And use N-W to align the "tail" of the read
-	int buflen = 2 * (olen - (len + seglen));
+	int buflen = 10 + (olen - (len + seglen));
 	if (buflen + curpos + seglen > fmi->len)
 	  buflen = fmi->len - curpos - seglen;
 	char *buf = malloc(buflen);
@@ -255,7 +255,7 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
     }
     if (nmisses > 0) {
       // Set up matrix for N-W alignment
-      int buflen = len + 3 + len/5;
+      int buflen = len + 10;
       if (buflen > curpos)
 	buflen = curpos;
       char *buf = malloc(buflen);
@@ -282,7 +282,7 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
     return 0;
   }
 
-  int buflen = len + 3 + len/5;
+  int buflen = len + 10;
   if (buflen > curpos)
     buflen = curpos;
   char *buf = malloc(buflen);
