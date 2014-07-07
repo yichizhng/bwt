@@ -117,24 +117,20 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
     for (j = 1; j <= len2; ++j) {
       int skip1 = -5, skip2 = -5;
       if (i > 1 && j > 1) {
-	skip2 = ((values[(i-1) * (len2 + 1) + j - 1] + 3 ==
-		  values[(i-1) * (len2 + 1) + j - 2]) ||
-		 (values[(i-1) * (len2 + 1) + j - 1] + 8 ==
-		  values[(i-1) * (len2 + 1) + j - 2])) ? 0 : -5;
-	skip1 = ((values[(i-1) * (len2 + 1) + j - 1] + 3 ==
-		  values[(i-2) * (len2 + 1) + j - 1]) ||
-		 (values[(i-1) * (len2 + 1) + j - 1] + 8 ==
-		  values[(i-2) * (len2 + 1) + j - 1])) ? 0 : -5;
+	skip2 = (pointers[i * (len2 + 1) + j - 1] == 2) ? 0 : -5;
+	skip1 = (pointers[(i - 1) * (len2 + 1) + j] == 1) ? 0 : -5;
       }
       // Update cell appropriately
       values[i * (len2 + 1) + j] =
 	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?0:-6),
 	    values[i * (len2 + 1) + j - 1] - 3 + skip2,
 	    values[(i-1) * (len2 + 1) + j] - 3 + skip1);
-      if (values[i * (len2 + 1) + j] == values[i * (len2 + 1) + j - 1] - 3 + skip1)
+      if (values[i * (len2 + 1) + j] == values[i * (len2 + 1) + j - 1] - 3 + skip2) {
 	pointers[i * (len2 + 1) + j] = 2; // skip on 2
-      else if (values[i * (len2 + 1) + j] == values[(i-1) * (len2 + 1) + j] - 3 + skip2)
+      }
+      else if (values[i * (len2 + 1) + j] == values[(i-1) * (len2 + 1) + j] - 3 + skip1) {
 	pointers[i * (len2 + 1) + j] = 1; // skip on 1
+      }
       else
 	pointers[i * (len2 + 1) + j] = 0; // no skip
     }
@@ -145,6 +141,13 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
       maxloc = j;
     }
   }
+  for (i = len1-10; i <= len1; ++i) {
+    for (j = maxloc-10; j <= maxloc; ++j) {
+      fprintf(stderr, "%d\t", values[i * (len2 + 1) + j]);
+    }
+    fprintf(stderr, "\n");
+  }
+  fprintf(stderr, "\n");
   i = len1;
   j = maxloc;
   // In theory something bad might have happened (some insertions on the end)
@@ -210,25 +213,19 @@ void sw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
     // Zero first column
     values[i * (len2 + 1)] = -5-3*i;
     for (j = 1; j <= len2; ++j) {
-      int skip1 = 0, skip2 = 0;
+      int skip1 = -5, skip2 = -5;
       if (i > 1 && j > 1) {
-	skip2 = ((values[(i-1) * (len2 + 1) + j - 1] + 3 ==
-		  values[(i-1) * (len2 + 1) + j - 2]) ||
-		 (values[(i-1) * (len2 + 1) + j - 1] + 8 ==
-		  values[(i-1) * (len2 + 1) + j - 2])) ? 0 : -5;
-	skip1 = ((values[(i-1) * (len2 + 1) + j - 1] + 3 ==
-		  values[(i-2) * (len2 + 1) + j - 1]) ||
-		 (values[(i-1) * (len2 + 1) + j - 1] + 8 ==
-		  values[(i-2) * (len2 + 1) + j - 1])) ? 0 : -5;
+	skip2 = (pointers[i * (len2 + 1) + j - 1] == 2) ? 0 : -5;
+	skip1 = (pointers[(i - 1) * (len2 + 1) + j] == 1) ? 0 : -5;
       }
       // Update cell appropriately
       values[i * (len2 + 1) + j] =
 	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?0:-6),
 	    values[i * (len2 + 1) + j - 1] - 3 + skip2,
 	    values[(i-1) * (len2 + 1) + j] - 3 + skip1);
-      if (values[i * (len2 + 1) + j] == values[i * (len2 + 1) + j - 1] - 3 + skip1)
+      if (values[i * (len2 + 1) + j] == values[i * (len2 + 1) + j - 1] - 3 + skip2)
 	pointers[i * (len2 + 1) + j] = 2; // skip on 2
-      else if (values[i * (len2 + 1) + j] == values[(i-1) * (len2 + 1) + j] - 3 + skip2)
+      else if (values[i * (len2 + 1) + j] == values[(i-1) * (len2 + 1) + j] - 3 + skip1)
 	pointers[i * (len2 + 1) + j] = 1; // skip on 1
       else
 	pointers[i * (len2 + 1) + j] = 0; // no skip
@@ -277,6 +274,11 @@ void sw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
     j--;
     stack_push(s, 'I', 1);
   }
+  // verify contents of stack
+  //for (int k = 0; k < s->size; ++k) {
+  //  fprintf(stderr, "%c\n", s->chars[k]);
+  //}
+
   free(values);
   free(pointers);
   return;
