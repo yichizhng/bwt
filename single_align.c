@@ -160,8 +160,7 @@ int mms_mismatch(const fm_index *fmi, const char *seq, const char *pattern, int 
 }
 
 // Pass in the required anchor length. No mismatch will be allowed.
-int align_read_anchored(const fm_index *fmi, const char *seq, const char *pattern, int len, int anchor_len) {
-  stack *s = stack_make();
+int align_read_anchored(const fm_index *fmi, const char *seq, const char *pattern, int len, int anchor_len, stack *s) {
   const int olen = len;
   int anchmisses = len/10, nmisses;
   // Here we require an anchor to start in the last 20% of the read
@@ -269,17 +268,19 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
       free(buf);
       free(buf2);
       //printf("%d %d\t", x, len);
-      stack_print_destroy(s);
       return curpos - x;
     }
 
     len -= anchlen;
     anchmisses -= anchlen / 10;
-    stack_destroy(s);
-    s = stack_make();
+    //stack_destroy(s);
+    //s = stack_make();
+    // reset the stack
+    s->size = 0;
   }
-  if (len > nmisses || nmisses < 1)
+  if (len > nmisses || nmisses < 1) {
     return 0;
+  }
 
   int buflen = len + 3 + len/5;
   if (buflen > curpos)
@@ -293,7 +294,6 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
   int x = nw_fast(buf2, len, buf, buflen, s);
   free(buf);
   free(buf2);
-  stack_print_destroy(s);
   return curpos - len;
 }
 
@@ -476,23 +476,30 @@ int main(int argc, char **argv) {
     int aligned = 0;
 
     int score = 0;
+    stack *s = stack_make();
     //    int thresh = (int) (-1.2 * (1+len));
 
     //    int pos = align_read(fmi, seq, buf, len, 10);
-    int pos = align_read_anchored(fmi, seq, buf, len, 12);
+    int pos = align_read_anchored(fmi, seq, buf, len, 12, s);
     if (pos) {
       naligned++;
       printf("%d\n", pos + 1);
+      stack_print_destroy(s);
     }
     else {
+      stack_destroy(s);
+      s = stack_make();
       //      pos = align_read(fmi, seq, revbuf, len, 10);
-      pos = align_read_anchored(fmi, seq, revbuf, len, 12);
+      pos = align_read_anchored(fmi, seq, revbuf, len, 12, s);
       if (pos) {
 	naligned++;
 	printf("%d\n", pos + 1);
+	stack_print_destroy(s);
       }
-      else
+      else {
 	printf("0\n");
+	stack_destroy(s);
+      }
     }
 
     /*
