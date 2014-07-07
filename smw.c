@@ -141,13 +141,6 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
       maxloc = j;
     }
   }
-  for (i = len1-10; i <= len1; ++i) {
-    for (j = maxloc-10; j <= maxloc; ++j) {
-      fprintf(stderr, "%d\t", values[i * (len2 + 1) + j]);
-    }
-    fprintf(stderr, "\n");
-  }
-  fprintf(stderr, "\n");
   i = len1;
   j = maxloc;
   // In theory something bad might have happened (some insertions on the end)

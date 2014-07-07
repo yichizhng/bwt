@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -pthread -std=gnu99 -Og -g -m64
+CFLAGS = -pthread -std=gnu99 -O3 -m64
 
 # Requirements: Some sort of reasonable x86 or x86-64 system (for the former,
 # compile with -m32 and edit rdtscll.h to use the 32-bit version), some sort
