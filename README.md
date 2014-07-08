@@ -1,12 +1,8 @@
 TODO:
 
-Change FM-Index-building code to switch between 4-threaded histsort and SACA-K
-at a certain length
-Fix the length of fmi->idxs (rnaseqtest.c has it right)
-Finish writing RNA-seq (there's some stitching code and a lot of I/O...
-Refactor some more code (I've gotten most of the redundancy out)
-Optimize csuff_arr() for larger array sizes; I suspect that threading
-at a lower level will help cache locality
+Proper scoring (also, increase affine gap penalty so it doesn't do stupid
+things)
+Maybe actually write alignment data out in SAM format
 
 Things to consider:
 
@@ -15,10 +11,12 @@ misses probably...); how much, on average, does storing the entire SA help
 (basically, we expect 15 calls to LF() on average)?
 As written, the FM-index currently takes up 37.5% of the space of an
 uncompressed chromosome (meaning that it would take up 150% that of
-a compressed one, since we have the 1:4 byte packing). Do we get
-significant advantages by storing more data? (For example, we could try
-storing seq_index, although that one is quite a pain in the ass, considering
-that it's actually an array of pointers)
+a compressed one, since we have the 1:4 byte packing, or 75% of a .2bit file
+(since those have masks)). Do we get significant advantages by storing more
+data? (For example, we could try storing seq_index, although that one is quite
+a pain in the ass, considering that it's actually an array of pointers, or
+more of the suffix array (Bowtie stores the same ratio I do, but its is
+adjustable))
 
 Methods:
 
@@ -128,72 +126,18 @@ algorithm (implemented in smw.c) to stitch together these matches. Under
 reasonable assumptions regarding the number and kind of transcription errors
 we should be able to achieve O(m + log (n)) speed
 
-Summary of files:
+On input format:
 
-Makefile
-A fairly normal makefile with fairly normal compiler options (for a 64-bit
-system). By default, -O3 and -fomit-frame-pointer are used for performance
-reasons (however, the latter is immiscible with -pg). Note that make clean will
-delete temporary files (i.e. filenames ending with tildes), but not emacs crash
-recovery files (ones with # on both sides)
+The genome is expected to be given as a single text file; the characters
+A, C, T, and G will be treated as their corresponding nucleotides; all others
+will be treated as A. There is a utility (filread.cc) which turns FastA genomes
+into the expected format (it also changes all unrecognized characters into G)
 
-bwt.c
-Simple implementation of a Burrows-Wheeler transform using qsort() and strcmp()
-(Note that its implementation of suffix array construction is not really
-correct)
+Reads are expected to be given one per line. Unrecognized characters will be
+treated as if they are 'N'. 'N' causes some odd behavior in alignment algorithms
+(some slowness, mostly, and possible lack of sensitivity if too many occur)
 
-csacak.c
-Ge Nong's implementation of SACA-K, adapted to C from the C++ code (A linear
-time, constant memory suffix array construction algorithm via induced sorting),
-by typedef'ing bool as char, and changing the indexing into the corpus to use
-the getbase() inline function
-
-fmitest.c
-Implementation of a FM-index and backwards search function, as well as some
-timing code. Uses csacak.c and histsortcomp.c's suffix array construction
-algorithms and seqindex.c's rank index to provide the Occ() function
-
-gen_seq.c
-Generates a random "genome" (characters are A, C, G, and T)
-
-histsort.c
-A basic implementation of histogram sort, using uncompressed strings consisting
-of (char)0, (char)1, (char)2, and (char)3 for the indexed text
-
-histsortcomp.c
-A multithreaded implementation of histogram sort, using a compressed
-respresentation of the genome (2 bits / nucleotide). Somewhat faster than
-the uncompressed version.
-
-histtest.c
-Testing code for histsort.c
-
-histsortcomptest.c
-Testing code for histsortcomp.c
-
-rdtscll.h
-Implementations of rdtscll for 32-bit and 64-bit platforms via #defines and
-inline assembly (for performance testing). Currently in 64-bit mode.
-
-rnaseqtest.c
-Testing code for RNA-seq; modeled mostly after searchtest.c, although with
-several variants of locate() to allow us to use some boundary conditions
-
-searchtest.c
-More testing/timing code for the FM-index and backwards search, as well as
-some basic I/O code (for various testing reasons)
-TODO: What's O(log_(n/c)(n))? Why isn't it constant (it should be O(1)?)
-
-seqindex.c
-Implementation of a constant time rank index (for the Occ() function lookup)
-Uses O(n) auxiliary memory (to hold partial indices)
-
-seqpt.c
-I/O functions for storing FM-indexes to file and reading them from file
-Note that they are stored as binary files and therefore not really amenable
-to editing (not that there would be much editing possible)
-
-smw.c
-Implementation of a dynamic programming algorithm (currently Needleman-Wunsch,
-which does global alignments; the idea is that we pass it shorter sequences
-so that its O(mn) running time becomes irrelevant) for sequence alignment
+The algorithm has trouble detecting certain patterns of errors (two errors
+within about 10 nts of each other will cause the gap calculator to fail).
+On the other hand, not backtracking is fast and it's something that can
+be dealt with by the rest of the alignment algorithm.
