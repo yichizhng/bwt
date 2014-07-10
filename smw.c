@@ -11,86 +11,13 @@ static inline int max(int a, int b, int c) {
   return (a > b) ? ((a > c) ? a : c) : ((b > c) ? b : c);
 }
 
-// TODO: more typedefs? I don't personally find C's default types confusing,
-// but a lot of "production" code I've seen is full of it. Maybe they're too
-// dependent on IDEs?
-
-// TODO: move this struct into another file, most likely. I have a lot of
-// reused / reusable code which I should really reorganize
-// A struct for returning information relating to a gap stitching
-struct gap_stitch {
-  int len1; // Number of nucleotides matched onto the first part
-  // Note that this includes indels on both sides!
-  int len2; // Analogous
-  // Hint: strlen(pattern) == strlen(gen_pat) == len1 + len2 + 1
-  char *pattern; // Printable representation of the alignment of the pattern
-  // '/' is used to denote the gap
-  char *gen_pat; // Parts of the genome that the pattern was mapped onto
-};
-
-struct gap_stitch *nw_stitch(const char *pat, int pat_len, const char *gen_l,
-			     const char *gen_r, int gen_len) {
-  int *valuesl, *valuesr, i;
-  char *patrev, *gen_rrev;
-  // We need to reverse pat and gen_r to use them as input for nw_gap_l
-  patrev = malloc(pat_len);
-  gen_rrev = malloc(gen_len);
-  for (i = 0; i < pat_len; ++i) {
-    patrev[i] = pat[pat_len - i];
-  }
-  for (i = 0; i < gen_len; ++i) {
-    gen_rrev[i] = gen_r[gen_len - i];
-  }
-}
-
-// Aligns from the left; obviously we can reuse this to align from the right
-// just by reversing everything
-// To be used as a component in aligning pretty much everything.
-int *nw_gap_l(const char *pat, int pat_len, const char *gen, int gen_len) {
-  // gen_len should probably only be a bit larger than pat_len; we can't
-  // have *that* many indels
-  
-  // The main difference is that the return array now has two extra columns
-  // which denote the highest score found in each row and the location of
-  // that score (for backtracking purposes)
-  
-  int *values, i, j, m, m_pos;
-  values = malloc((pat_len + 1) * (gen_len + 3) * sizeof(int));
-  // Initialize first row
-  for (j = 0; j <= gen_len; ++j) {
-    values[j] = -j;
-  }
-  values[gen_len + 1] = 0;
-  values[gen_len + 2] = 0;
-
-  // Deal with rest of matrix
-  for (i = 1; i <= pat_len; ++i) {
-    // Initialize first column
-    values[i * (gen_len + 3)] = -i;
-    m = -i;
-    m_pos = 0;
-    for (j = 1; j <= gen_len; ++j) {
-      // Update cell appropriately
-      values[i * (gen_len + 3) + j] = 
-	max(values[(i-1) * (gen_len + 3) + j - 1] +
-	    ((pat[i-1] == gen[j-1])?2:-1),
-	    values[i * (gen_len + 3) + j - 1] - 1,
-	    values[(i-1) * (gen_len + 3) + j] - 1);
-      if (values[i * (gen_len + 3) + j] > m) {
-	m = values[i * (gen_len + 3) + j];
-	m_pos = j;
-      }
-    }
-    // Write the appropriate m and m_pos
-    values[i * (gen_len + 3) + gen_len + 1] = m;
-    values[i * (gen_len + 3) + gen_len + 2] = m_pos;
-  }
-  return values;
-}
-
 // Optimization of needleman-wunsch by using a 1d output array; is faster by a
 // pretty hilarious factor (>40x) due to the lack of another level of
 // indirection and/or cache optimizations and/or lack of malloc() calls
+
+// str1 should be the read (allowed characters are 0-3 and 5), str2 the
+// genome (allowed characters 0-3), both unpacked form. 'N' on the read will
+// be treated as if it matches all characters.
 
 // Returns the position on str2 that the last character of str1 was aligned
 // to. Outputs some CIGARs to the given stack. This function can be used
@@ -122,7 +49,7 @@ int nw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
       skip1 = (pointers[(i - 1) * (len2 + 1) + j] == 1) ? 0 : -5;
       // Update cell appropriately
       values[i * (len2 + 1) + j] =
-	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?0:-6),
+	max(values[(i-1) * (len2 + 1) + j - 1] + (((str1[i-1]==5)||(str1[i-1] == str2[j-1]))?0:-6),
 	    values[i * (len2 + 1) + j - 1] - 3 + skip2,
 	    values[(i-1) * (len2 + 1) + j] - 3 + skip1);
       if (values[i * (len2 + 1) + j] == values[i * (len2 + 1) + j - 1] - 3 + skip2) {
@@ -208,7 +135,7 @@ void sw_fast(const char *str1, int len1, const char *str2, int len2, stack *s) {
       skip1 = (pointers[(i - 1) * (len2 + 1) + j] == 1) ? 0 : -5;
       // Update cell appropriately
       values[i * (len2 + 1) + j] =
-	max(values[(i-1) * (len2 + 1) + j - 1] + ((str1[i-1] == str2[j-1])?0:-6),
+	max(values[(i-1) * (len2 + 1) + j - 1] + (((str1[i-1]==5)||(str1[i-1] == str2[j-1]))?0:-6),
 	    values[i * (len2 + 1) + j - 1] - 3 + skip2,
 	    values[(i-1) * (len2 + 1) + j] - 3 + skip1);
       if (values[i * (len2 + 1) + j] == values[i * (len2 + 1) + j - 1] - 3 + skip2)

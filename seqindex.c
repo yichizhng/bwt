@@ -1,9 +1,9 @@
 // Calculates a rank index for a given compressed BWT sequence
 // We have no particular need for the select() operation, although we can
 // implement it in nearly constant time if we allow certain constraints
-// regarding our nucleotide sequences (which are roughly true); nucleotide
-// sequences are also essentially incompressible, so there's no point
-// using a wavelet tree or RRR
+// regarding our nucleotide sequences (which are roughly true);
+// Compression is probably possible but will slow things down and is largely
+// pointless (a genome is not that big anyway)
 
 // TODO (maybe): We can optimize some code if blocksize is required to be
 // a power of 2 rather than a multiple of 4
@@ -313,6 +313,11 @@ void loc_search(const fm_index *fmi, const char *pattern, int len,
 // of matches in sp and ep.
 int mms(const fm_index *fmi, const char *pattern, int len, int *sp, int *ep) {
   int start, end, i;
+  int skips = 0;
+  while (pattern[len-1] == 5) {
+    len--;
+    skips++;
+  }
   *sp = start = fmi->C[pattern[len-1]];
   *ep = end = fmi->C[pattern[len-1]+1];
   for (i = len-2; i >= 0; --i) {
@@ -337,11 +342,11 @@ int mms(const fm_index *fmi, const char *pattern, int len, int *sp, int *ep) {
     end = fmi->C[c] + rank(fmi, c, end);
   }
   if (end <= start) // Didn't finish matching
-    return len - i - 2;
+    return len - i - 2 + skips;
   else { // Finished matching
     *sp = start;
     *ep = end;
-    return len - i - 1;
+    return len - i - 1 + skips;
   }
 }
 

@@ -210,7 +210,7 @@ int align_read_anchored(const fm_index *fmi, const char *seq, const char *patter
 
     // In the second loop we try to extend our anchor backwards
     while ((len > nmisses) && (len > 4) && (nmisses > 0)) {
-      for (curgap = 1; curgap < 4; ++curgap) {
+      for (curgap = 1; curgap < 10; ++curgap) {
 	int start, end;
 	int seglen = mms(fmi, pattern, len-curgap, &start, &end);
 	int matched = 0;

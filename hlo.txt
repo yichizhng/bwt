@@ -23,40 +23,56 @@ can accomplish this in less memory than is required to store the suffix array.
 
 The first step towards sequence alignment is building a suffix array (i.e.
 sorted list of suffixes) from the genome. There are many algorithms to do this;
-the ones chosen were a custom histogram sort (O(n log n) average time) and
-SACA-K (Ge Nong's refinement of the earlier SA-IS algorithm) (O(n) average time)
-
-Histogram sort:
-Pros:
-Good cache locality
-Easily parallelizable
-Much faster than linear time algorithms for "small" cases (<10^9 nucleotides)
-
-Cons:
-Very memory inefficient; this could be improved, but it seems unnecessary (it
-uses <1GB for 1e8 base pairs, and is only about twice as fast as SACA-K at
-that size)
-Performance scales poorly for very large genomes
-
-SACA-K:
-Pros:
-Good cache locality
-Extremely small memory footprint (uses constant auxiliary space)
-Scales well to larger genomes (although several indexing variables have type
-int right now, so we can't handle genomes with much more than 2 billion base
-pairs)
-
-Cons:
-Slower than histogram sort for small cases
-Induced sorting algorithms are nearly impossible to parallelize
+the algorithm used here is Ge Nong's SACA-K, which has a fairly simple
+implementation and optimal asymptotic time (linear) and space (constant) usage.
 
 The suffix array is then used to build a FM-index. The FM-index consists of the
 Burrows-Wheeler transformed string (constructed trivially as bwt[i] = 
 seq[SA[i]-1] for SA[i] != 0) with auxiliary data to calculate rank in constant
 time. This is implemented by storing a fraction of the suffix array, a fraction
 of the rank, and the total counts of each nucleotide in the sequence.
+(in actual implementation the sentinel character is not stored; this is
+irrelevant for interacting with the FM-index via any of the interfaces)
 
 An FM-index allows for the implementation of exact search in O(n + log_c m),
 where c is chosen at the time of construction of the index (it is possible
 to choose m, but this dramatically increases memory usage, because it requires
-that we store the entire suffix array,
+that we store the entire suffix array).
+
+Functions of interest:
+
+Most functions regarding the FM-index are in seqindex.c. Here we cover the
+most relevant functions to interact with the FM-index.
+
+make_fmi() makes the FMI from a string which is expected to be in packed form
+(see build_index.c for a way of turning a normal sequence into that form).
+
+reverse_search() searches for an exact pattern over the index and returns the
+number of matches. It does so in time linear in the length of the pattern
+(asymptotically; in reality it's affected by things like caching so it
+is not exactly constant in the genome size)
+
+unc_sa() returns the rotation corresponding to a location on the Burrows-Wheeler
+transform. It is used to change the returned locations of locate(), mms() and
+similar functions into locations on the string. (As the name indicates, it
+"uncompresses" the suffix array and returns SA[idx])
+
+locate() returns the first (lexicographical) rotation with the given pattern
+as a prefix, or -1 if no such rotation exists. It also prints a warning if
+multiple such rotations exist. It has runtime equivalent to calling
+reverse_search() plus unc_sa() (the latter only if there was a match).
+
+loc_search() behaves like locate(), but instead stores the range of rotations
+in the BWT with the pattern as prefix in the given pointers sp and ep (so that
+unc_sa(fmi, *sp), unc_sa(fmi, sp[1]), ..., unc_sa(fmi, ep[-1]) are the locations
+on the gneome)
+
+mms() finds what I term the "maximum mappable suffix" of the pattern; it
+essentially does locate() until it fails, then returns the range of matches in
+sp and ep, and returns the number of bases matched.
+
+destroy_fmi frees all the memory associated with a given FM-index.
+
+fileio.c contains the functions used to write and read an index to and from disk
+
+
